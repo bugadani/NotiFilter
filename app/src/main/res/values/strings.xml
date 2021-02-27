@@ -1,3 +1,8 @@
 <resources>
-    <string name="app_name">Notifilter</string>
+    <string name="app_name">NotiFilter</string>
+    <string name="service_name">Notification listener</string>
+    <string name="startup_service_name">Startup service</string>
+    <string name="notification_title">NotiFilter service</string>
+    <string name="notification_message">Sorry about this</string>
+    <string name="ticker_text">What is ticker</string>
 </resources>
