@@ -20,14 +20,13 @@ class UnlockReceiver : BroadcastReceiver() {
 }
 
 class NotificationListener : NotificationListenerService() {
+    private var proxied: HashSet<NotificationGroup> = HashSet()
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (deviceInUse()) {
             return
         }
         if (!shouldProxyForApp(sbn)) {
-            return
-        }
-        if (notificationAlreadyProxied(sbn)) {
             return
         }
         proxyNotification(sbn)
@@ -48,14 +47,20 @@ class NotificationListener : NotificationListenerService() {
         return true
     }
 
-    private fun notificationAlreadyProxied(sbn: StatusBarNotification): Boolean {
-        // needs to maintain a list of posted notifications
-        return false
+    private fun proxyNotification(sbn: StatusBarNotification) {
+        val group = notificationGroup(sbn)
+
+        if (proxied.add(group)) {
+            // new notification group
+            TODO("Implement proxying notification")
+        }
     }
 
-    private fun proxyNotification(sbn: StatusBarNotification) {
-        TODO("Not yet implemented")
+    private fun notificationGroup(sbn: StatusBarNotification): NotificationGroup {
+        return NotificationGroup(sbn.packageName, sbn.groupKey)
     }
+
+    data class NotificationGroup(val pkg: String, val groupKey: String)
 }
 
 class MainActivity : AppCompatActivity() {
