@@ -20,7 +20,7 @@ class UnlockReceiver : BroadcastReceiver() {
 
     override fun onReceive(appContext: Context?, intent: Intent) {
         val serviceIntent = Intent(appContext, NotificationListener::class.java)
-        Log.d(TAG, "onReceive")
+        Log.d(TAG, "onReceive: " + intent.action)
         when(intent.action) {
             ACTION_SCREEN_ON -> appContext?.stopService(serviceIntent)
             ACTION_SCREEN_OFF -> appContext?.startService(serviceIntent)
