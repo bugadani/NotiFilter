@@ -18,12 +18,11 @@ class UnlockReceiver(val context: StartupService) : BroadcastReceiver() {
     private val TAG = "UnlockReceiver"
 
     override fun onReceive(appContext: Context?, intent: Intent) {
-        val serviceIntent = Intent(context, NotificationListener::class.java)
-        Log.d(TAG, "onReceive: " + intent.action)
-        when(intent.action) {
-            ACTION_SCREEN_ON -> context.stopService(serviceIntent)
-            ACTION_SCREEN_OFF -> context.startService(serviceIntent)
+        val serviceIntent = Intent(context, NotificationListener::class.java).apply {
+            putExtra("action", intent.action)
         }
+        Log.d(TAG, "onReceive: " + intent.action)
+        context.startService(serviceIntent)
     }
 }
 
@@ -33,12 +32,36 @@ class NotificationListener : NotificationListenerService() {
     private val channel = NotificationChannel("P", "Proxied Notifications", NotificationManager.IMPORTANCE_LOW).apply {
         this.description = "The proxied notifications"
     }
+    private var enabled = false
+    private var connected = false
+
+    override fun onListenerConnected() {
+        Log.d(TAG, "NotificationListener: connected")
+        connected = true
+        super.onListenerConnected()
+    }
+
+    override fun onListenerDisconnected() {
+        Log.d(TAG, "NotificationListener: disconnected")
+        connected = false
+        super.onListenerDisconnected()
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notificationManager = getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
 
-        Log.d(TAG, "NotificationListener started")
+        when(intent?.extras?.get("action")) {
+            ACTION_SCREEN_ON -> {
+                Log.d(TAG, "NotificationListener stopped")
+                notificationManager.cancelAll()
+                enabled = false
+            }
+            ACTION_SCREEN_OFF -> {
+                Log.d(TAG, "NotificationListener started")
+                enabled = true
+            }
+        }
 
         return super.onStartCommand(intent, flags, startId)
     }
@@ -53,7 +76,11 @@ class NotificationListener : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        Log.d(TAG, "Notification posted")
+        Log.d(TAG, "Notification posted: " + sbn.notification.tickerText)
+        if (!connected || !enabled) {
+            Log.d(TAG, "Notification ignored: disabled")
+            return
+        }
         if (!shouldProxyForApp(sbn)) {
             Log.d(TAG, "Notification ignored: app ignored")
             return
@@ -70,9 +97,9 @@ class NotificationListener : NotificationListenerService() {
         val group = notificationGroup(sbn)
 
         if (proxied.add(group)) {
-            Log.d(TAG, "Proxying notification")
+            Log.d(TAG, "Proxying notification: " + sbn.notification.tickerText)
             // new notification group
-            TODO("Implement proxying notification")
+            //TODO("Implement proxying notification")
         } else {
             Log.d(TAG, "Notification ignored: already notified")
         }
