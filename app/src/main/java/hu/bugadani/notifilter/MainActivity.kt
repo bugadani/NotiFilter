@@ -1,20 +1,25 @@
 package hu.bugadani.notifilter
 
+import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.hardware.display.DisplayManager
+import android.content.Intent.ACTION_SCREEN_OFF
+import android.content.Intent.ACTION_SCREEN_ON
+import android.content.IntentFilter
 import android.os.Bundle
+import android.os.IBinder
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import android.view.Display
 import androidx.appcompat.app.AppCompatActivity
 
 
 class UnlockReceiver : BroadcastReceiver() {
     override fun onReceive(appContext: Context?, intent: Intent) {
-         if (intent.action.equals(Intent.ACTION_SCREEN_ON, ignoreCase = true)) {
-            // SCREEN_ON: clear all notifications created by the app
+        val serviceIntent = Intent(appContext, NotificationListener::class.java)
+        when(intent.action) {
+            ACTION_SCREEN_ON -> appContext?.stopService(serviceIntent)
+            ACTION_SCREEN_OFF -> appContext?.startService(serviceIntent)
         }
     }
 }
@@ -23,23 +28,10 @@ class NotificationListener : NotificationListenerService() {
     private var proxied: HashSet<NotificationGroup> = HashSet()
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (deviceInUse()) {
-            return
-        }
         if (!shouldProxyForApp(sbn)) {
             return
         }
         proxyNotification(sbn)
-    }
-
-    private fun deviceInUse(): Boolean {
-        val displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-        for (display in displayManager.displays) {
-            if (display.state != Display.STATE_OFF) {
-                return true
-            }
-        }
-        return false
     }
 
     private fun shouldProxyForApp(sbn: StatusBarNotification): Boolean {
@@ -63,9 +55,26 @@ class NotificationListener : NotificationListenerService() {
     data class NotificationGroup(val pkg: String, val groupKey: String)
 }
 
+class StartupService : Service() {
+    private val receiver = UnlockReceiver()
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+
+        registerReceiver(receiver, IntentFilter(ACTION_SCREEN_ON))
+        registerReceiver(receiver, IntentFilter(ACTION_SCREEN_OFF))
+
+        return super.onStartCommand(intent, flags, startId)
+    }
+
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
+    }
+}
+
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        startService(Intent(this, StartupService::class.java))
         setContentView(R.layout.activity_main)
     }
 }

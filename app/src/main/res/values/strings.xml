@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">NotiFilter</string>
     <string name="service_name">Notification listener</string>
+    <string name="startup_service_name">Startup service</string>
 </resources>
