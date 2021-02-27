@@ -14,16 +14,15 @@ import android.service.notification.StatusBarNotification
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 
-
-class UnlockReceiver : BroadcastReceiver() {
+class UnlockReceiver(val context: StartupService) : BroadcastReceiver() {
     private val TAG = "UnlockReceiver"
 
     override fun onReceive(appContext: Context?, intent: Intent) {
-        val serviceIntent = Intent(appContext, NotificationListener::class.java)
+        val serviceIntent = Intent(context, NotificationListener::class.java)
         Log.d(TAG, "onReceive: " + intent.action)
         when(intent.action) {
-            ACTION_SCREEN_ON -> appContext?.stopService(serviceIntent)
-            ACTION_SCREEN_OFF -> appContext?.startService(serviceIntent)
+            ACTION_SCREEN_ON -> context.stopService(serviceIntent)
+            ACTION_SCREEN_OFF -> context.startService(serviceIntent)
         }
     }
 }
@@ -39,12 +38,16 @@ class NotificationListener : NotificationListenerService() {
         val notificationManager = getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
 
+        Log.d(TAG, "NotificationListener started")
+
         return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onDestroy() {
         val notificationManager = getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancelAll()
+
+        Log.d(TAG, "NotificationListener destroyed")
 
         super.onDestroy()
     }
@@ -83,7 +86,7 @@ class NotificationListener : NotificationListenerService() {
 }
 
 class StartupService : Service() {
-    private val receiver = UnlockReceiver()
+    private val receiver = UnlockReceiver(this)
     private val TAG = "Startup service"
     private val ONGOING_NOTIFICATION_ID = 1
     private val channel = NotificationChannel("N", "Foreground Service Notification", NotificationManager.IMPORTANCE_LOW).apply {
@@ -125,7 +128,7 @@ class StartupService : Service() {
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        startService(Intent(this, StartupService::class.java))
+        startForegroundService(Intent(this, StartupService::class.java))
         setContentView(R.layout.activity_main)
     }
 }

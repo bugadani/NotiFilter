@@ -19,17 +19,10 @@
             </intent-filter>
         </activity>
 
-        <receiver android:name=".UnlockReceiver" />
-
         <service
             android:name=".NotificationListener"
-            android:enabled="false"
             android:label="@string/service_name"
-            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
-            <intent-filter>
-                <action android:name="android.service.notification.NotificationListenerService" />
-            </intent-filter>
-        </service>
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" />
 
         <service
             android:name=".StartupService"
