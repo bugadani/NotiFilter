@@ -3,9 +3,11 @@ package hu.bugadani.notifilter
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.hardware.display.DisplayManager
 import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.view.Display
 import androidx.appcompat.app.AppCompatActivity
 
 
@@ -32,8 +34,13 @@ class NotificationListener : NotificationListenerService() {
     }
 
     private fun deviceInUse(): Boolean {
-        // needs some heuristic to see if device is in use
-        return true
+        val displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+        for (display in displayManager.displays) {
+            if (display.state != Display.STATE_OFF) {
+                return true
+            }
+        }
+        return false
     }
 
     private fun shouldProxyForApp(sbn: StatusBarNotification): Boolean {
