@@ -34,6 +34,7 @@ class NotificationListener : NotificationListenerService() {
     }
     private var enabled = false
     private var connected = false
+    private var id = 0
 
     override fun onListenerConnected() {
         Log.d(TAG, "NotificationListener: connected")
@@ -50,8 +51,9 @@ class NotificationListener : NotificationListenerService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notificationManager = getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
+        proxied.clear()
 
-        when(intent?.extras?.get("action")) {
+        when (intent?.extras?.get("action")) {
             ACTION_SCREEN_ON -> {
                 Log.d(TAG, "NotificationListener stopped")
                 notificationManager.cancelAll()
@@ -90,6 +92,9 @@ class NotificationListener : NotificationListenerService() {
 
     private fun shouldProxyForApp(sbn: StatusBarNotification): Boolean {
         // needs a list of apps
+        if (sbn.packageName == "hu.bugadani.notifilter") {
+            return false
+        }
         return true
     }
 
@@ -98,8 +103,26 @@ class NotificationListener : NotificationListenerService() {
 
         if (proxied.add(group)) {
             Log.d(TAG, "Proxying notification: " + sbn.notification.tickerText)
+            Log.d(TAG, "Group: $group")
+
             // new notification group
-            //TODO("Implement proxying notification")
+            try {
+                val notification = Notification.Builder(this, channel.id)
+                        .setExtras(sbn.notification.extras)
+                        .setSmallIcon(sbn.notification.smallIcon)
+                        .setContentIntent(sbn.notification.contentIntent)
+                        .setCustomContentView(sbn.notification.contentView)
+                        .setCustomBigContentView(sbn.notification.bigContentView)
+                        .setCategory(sbn.notification.category)
+                        .setTicker(sbn.notification.tickerText)
+                        .build()
+
+                val notificationManager = getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
+                notificationManager.notify(id, notification)
+                id += 1
+            } catch (e: IllegalArgumentException) {
+                Log.e(TAG, "Exception: $e")
+            }
         } else {
             Log.d(TAG, "Notification ignored: already notified")
         }
@@ -131,7 +154,7 @@ class StartupService : Service() {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
 
-        val notification: Notification = Notification.Builder(this, channel.id)
+        val notification = Notification.Builder(this, channel.id)
                 .setContentTitle(getText(R.string.notification_title))
                 .setContentText(getText(R.string.notification_message))
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
