@@ -83,6 +83,10 @@ class NotificationListener : NotificationListenerService() {
             Log.d(TAG, "Notification ignored: disabled")
             return
         }
+        if (sbn.notification.tickerText == null) {
+            Log.d(TAG, "Notification ignored: no ticker text")
+            return
+        }
         if (!shouldProxyForApp(sbn)) {
             Log.d(TAG, "Notification ignored: app ignored")
             return
