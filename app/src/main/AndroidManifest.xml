@@ -30,7 +30,7 @@
         </service>
 
         <service
-            android:name=".NotificationListener"
+            android:name=".StartupService"
             android:label="@string/startup_service_name"
             android:exported="false">
             <intent-filter>
