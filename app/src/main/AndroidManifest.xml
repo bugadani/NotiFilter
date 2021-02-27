@@ -16,6 +16,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <receiver android:name=".UnlockReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.SCREEN_ON" />
+                <action android:name="android.intent.action.SCREEN_OFF" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
