@@ -42,6 +42,13 @@ class NotificationListener : NotificationListenerService() {
         return super.onStartCommand(intent, flags, startId)
     }
 
+    override fun onDestroy() {
+        val notificationManager = getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancelAll()
+
+        super.onDestroy()
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         Log.d(TAG, "Notification posted")
         if (!shouldProxyForApp(sbn)) {
