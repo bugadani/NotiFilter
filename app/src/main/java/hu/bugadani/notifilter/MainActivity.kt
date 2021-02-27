@@ -11,12 +11,16 @@ import android.os.Bundle
 import android.os.IBinder
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 
 
 class UnlockReceiver : BroadcastReceiver() {
+    private val TAG = "UnlockReceiver"
+
     override fun onReceive(appContext: Context?, intent: Intent) {
         val serviceIntent = Intent(appContext, NotificationListener::class.java)
+        Log.d(TAG, "onReceive")
         when(intent.action) {
             ACTION_SCREEN_ON -> appContext?.stopService(serviceIntent)
             ACTION_SCREEN_OFF -> appContext?.startService(serviceIntent)
@@ -26,9 +30,12 @@ class UnlockReceiver : BroadcastReceiver() {
 
 class NotificationListener : NotificationListenerService() {
     private var proxied: HashSet<NotificationGroup> = HashSet()
+    private val TAG = "NotificationListener"
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        Log.d(TAG, "Notification posted")
         if (!shouldProxyForApp(sbn)) {
+            Log.d(TAG, "Notification ignored: app ignored")
             return
         }
         proxyNotification(sbn)
@@ -43,8 +50,11 @@ class NotificationListener : NotificationListenerService() {
         val group = notificationGroup(sbn)
 
         if (proxied.add(group)) {
+            Log.d(TAG, "Proxying notification")
             // new notification group
             TODO("Implement proxying notification")
+        } else {
+            Log.d(TAG, "Notification ignored: already notified")
         }
     }
 
@@ -57,8 +67,10 @@ class NotificationListener : NotificationListenerService() {
 
 class StartupService : Service() {
     private val receiver = UnlockReceiver()
+    private val TAG = "Startup service"
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(TAG, "onStartCommand")
 
         registerReceiver(receiver, IntentFilter(ACTION_SCREEN_ON))
         registerReceiver(receiver, IntentFilter(ACTION_SCREEN_OFF))
