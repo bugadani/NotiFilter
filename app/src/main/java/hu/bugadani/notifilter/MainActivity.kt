@@ -39,9 +39,10 @@ class UnlockReceiver(private val context: StartupService) : BroadcastReceiver() 
 class NotificationListener : NotificationListenerService() {
     companion object {
         const val TAG = "NotificationListener"
+        const val RELAX_TIME_MS = 1000 * 60
     }
 
-    private var proxied: HashSet<NotificationGroup> = HashSet()
+    private var proxied: HashMap<NotificationGroup, Long> = HashMap()
     private val channel = NotificationChannel("P", "Proxied Notifications", NotificationManager.IMPORTANCE_LOW).apply {
         this.description = "The proxied notifications"
     }
@@ -116,31 +117,37 @@ class NotificationListener : NotificationListenerService() {
     private fun proxyNotification(sbn: StatusBarNotification) {
         val group = notificationGroup(sbn)
 
-        if (proxied.add(group)) {
-            Log.d(TAG, "Proxying notification: " + sbn.notification.tickerText)
-            Log.d(TAG, "Group: $group")
-            Log.d(TAG, "Category: ${sbn.notification.category}")
+        val old = proxied[group]
+        val ignored = old != null && old > System.currentTimeMillis() + RELAX_TIME_MS
 
-            // new notification group
-            try {
-                val notification = Notification.Builder(this, channel.id)
-                        .setExtras(sbn.notification.extras)
-                        .setSmallIcon(sbn.notification.smallIcon)
-                        .setContentIntent(sbn.notification.contentIntent)
-                        .setCustomContentView(sbn.notification.contentView)
-                        .setCustomBigContentView(sbn.notification.bigContentView)
-                        .setCategory(sbn.notification.category)
-                        .setTicker(sbn.notification.tickerText)
-                        .build()
-
-                val notificationManager = getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
-                notificationManager.notify(id, notification)
-                id += 1
-            } catch (e: IllegalArgumentException) {
-                Log.e(TAG, "Exception: $e")
-            }
-        } else {
+        if (ignored) {
             Log.d(TAG, "Notification ignored: already notified")
+            return
+        }
+
+        proxied[group] = System.currentTimeMillis()
+
+        Log.d(TAG, "Proxying notification: " + sbn.notification.tickerText)
+        Log.d(TAG, "Group: $group")
+        Log.d(TAG, "Category: ${sbn.notification.category}")
+
+        // new notification group
+        try {
+            val notification = Notification.Builder(this, channel.id)
+                    .setExtras(sbn.notification.extras)
+                    .setSmallIcon(sbn.notification.smallIcon)
+                    .setContentIntent(sbn.notification.contentIntent)
+                    .setCustomContentView(sbn.notification.contentView)
+                    .setCustomBigContentView(sbn.notification.bigContentView)
+                    .setCategory(sbn.notification.category)
+                    .setTicker(sbn.notification.tickerText)
+                    .build()
+
+            val notificationManager = getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.notify(id, notification)
+            id += 1
+        } catch (e: IllegalArgumentException) {
+            Log.e(TAG, "Exception: $e")
         }
     }
 
@@ -248,14 +255,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun onResume() {
+        super.onResume()
+
         startForegroundService(Intent(this, StartupService::class.java))
         bindService(Intent(this, StartupService::class.java), connection, Context.BIND_AUTO_CREATE)
     }
 
     override fun onPause() {
-        unbindService(connection)
+        try {
+            unbindService(connection)
+        } catch (e: IllegalArgumentException) {
+            Log.e(TAG, "Exception: $e")
+        }
         super.onPause()
     }
 }
