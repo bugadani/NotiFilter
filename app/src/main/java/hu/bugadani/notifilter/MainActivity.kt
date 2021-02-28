@@ -164,6 +164,16 @@ class StartupService : Service() {
     val enabledFilters = HashSet<String>()
     val binder = LocalBinder()
 
+    override fun onCreate() {
+        super.onCreate()
+
+        val preferences = getSharedPreferences("appSettings", Context.MODE_PRIVATE)
+        val set = preferences.getStringSet("filter", HashSet())
+        if (set != null) {
+            enabledFilters.addAll(set)
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "onStartCommand")
 
@@ -196,7 +206,11 @@ class StartupService : Service() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        // TODO persist
+        val preferences = getSharedPreferences("appSettings", Context.MODE_PRIVATE)
+        with(preferences.edit()) {
+            putStringSet("filter", enabledFilters)
+            apply()
+        }
         return super.onUnbind(intent)
     }
 
