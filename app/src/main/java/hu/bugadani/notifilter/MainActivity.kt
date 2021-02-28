@@ -1,13 +1,11 @@
 package hu.bugadani.notifilter
 
 import android.app.*
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
+import android.content.*
 import android.content.Intent.*
-import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.graphics.drawable.Drawable
+import android.os.Binder
 import android.os.Bundle
 import android.os.IBinder
 import android.service.notification.NotificationListenerService
@@ -17,6 +15,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.Switch
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -30,6 +29,7 @@ class UnlockReceiver(private val context: StartupService) : BroadcastReceiver() 
     override fun onReceive(appContext: Context?, intent: Intent) {
         val serviceIntent = Intent(context, NotificationListener::class.java).apply {
             putExtra("action", intent.action)
+            putExtra("enabled", context.enabledFilters)
         }
         Log.d(TAG, "onReceive: " + intent.action)
         context.startService(serviceIntent)
@@ -48,7 +48,7 @@ class NotificationListener : NotificationListenerService() {
     private var enabled = false
     private var connected = false
     private var id = 0
-    private val enabledFilters = HashSet<String>()
+    private var enabledFilters = HashSet<String>()
 
     override fun onListenerConnected() {
         Log.d(TAG, "NotificationListener: connected")
@@ -75,6 +75,7 @@ class NotificationListener : NotificationListenerService() {
             }
             ACTION_SCREEN_OFF -> {
                 Log.d(TAG, "NotificationListener started")
+                enabledFilters = intent.extras?.get("enabled") as HashSet<String>
                 enabled = true
             }
         }
@@ -160,6 +161,8 @@ class StartupService : Service() {
     private val channel = NotificationChannel("N", "Foreground Service Notification", NotificationManager.IMPORTANCE_LOW).apply {
         this.description = "Sorry"
     }
+    val enabledFilters = HashSet<String>()
+    val binder = LocalBinder()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "onStartCommand")
@@ -188,8 +191,19 @@ class StartupService : Service() {
         return super.onStartCommand(intent, flags, startId)
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
+    override fun onBind(intent: Intent?): IBinder {
+        return binder
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        // TODO persist
+        return super.onUnbind(intent)
+    }
+
+    inner class LocalBinder : Binder() {
+        fun getService(): StartupService {
+            return this@StartupService
+        }
     }
 }
 
@@ -199,47 +213,56 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var linearLayoutManager: LinearLayoutManager
-    private val enabledFilters = HashSet<String>()
+
+    private val connection: ServiceConnection = object : ServiceConnection {
+        override fun onServiceConnected(componentName: ComponentName, iBinder: IBinder) {
+            val service: StartupService = (iBinder as StartupService.LocalBinder).getService()
+
+            setContentView(R.layout.activity_main)
+            linearLayoutManager = LinearLayoutManager(this@MainActivity)
+
+            // List installed apps
+            val packages = packageManager.queryIntentActivities(Intent(ACTION_MAIN, null), 0)
+            val elements = ArrayList<AppInfoElement>()
+            val seen = HashSet<CharSequence>()
+            for (resInfo in packages) {
+                if (resInfo.activityInfo.packageName == "hu.bugadani.notifilter") {
+                    continue
+                }
+                val appInfo = packageManager.getApplicationInfo(resInfo.activityInfo.packageName, 0)
+
+                if (seen.add(appInfo.loadLabel(packageManager))) {
+                    elements.add(AppInfoElement(appInfo, this@MainActivity))
+                }
+            }
+
+            elements.sortBy { it.appName }
+
+            val appList: RecyclerView = findViewById(R.id.appList)
+            appList.layoutManager = linearLayoutManager
+            appList.adapter = AppListItemAdapter(elements, service.enabledFilters)
+        }
+
+        override fun onServiceDisconnected(componentName: ComponentName) {
+
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         startForegroundService(Intent(this, StartupService::class.java))
-
-        setContentView(R.layout.activity_main)
-        linearLayoutManager = LinearLayoutManager(this)
-
-        // TODO: loadEnabledFilters
-
-        // List installed apps
-        val packages = packageManager.queryIntentActivities(Intent(ACTION_MAIN, null), 0)
-        val elements = ArrayList<AppInfoElement>()
-        val seen = HashSet<CharSequence>()
-        for (resInfo in packages) {
-            if (resInfo.activityInfo.packageName == "hu.bugadani.notifilter") {
-                continue
-            }
-            val appInfo = packageManager.getApplicationInfo(resInfo.activityInfo.packageName, 0)
-
-            if (seen.add(appInfo.loadLabel(packageManager))) {
-                elements.add(AppInfoElement(appInfo, this))
-            }
-        }
-
-        elements.sortBy { it.appName }
-
-        val appList: RecyclerView = findViewById(R.id.appList)
-        appList.layoutManager = linearLayoutManager
-        appList.adapter = AppListItemAdapter(elements, enabledFilters)
+        bindService(Intent(this, StartupService::class.java), connection, Context.BIND_AUTO_CREATE)
     }
 
     override fun onPause() {
-        // TODO: save enabledFilters
+        unbindService(connection)
         super.onPause()
     }
 }
 
 class AppInfoElement(appInfo: ApplicationInfo, context: Context) {
     val appName: String = appInfo.loadLabel(context.packageManager).toString()
+    val packageName: String = appInfo.packageName
     val appIcon: Drawable = appInfo.loadIcon(context.packageManager)
 }
 
@@ -253,6 +276,7 @@ class AppListItemAdapter(private val dataSet: ArrayList<AppInfoElement>, private
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val appNameView: TextView = view.findViewById(R.id.appName)
         val appIconView: ImageView = view.findViewById(R.id.appIcon)
+        val appEnabledView: Switch = view.findViewById(R.id.appEnabled)
     }
 
     // Create new views (invoked by the layout manager)
@@ -270,6 +294,18 @@ class AppListItemAdapter(private val dataSet: ArrayList<AppInfoElement>, private
 
         viewHolder.appNameView.text = appInfo.appName
         viewHolder.appIconView.setImageDrawable(appInfo.appIcon)
+        viewHolder.appEnabledView.tag = appInfo.packageName
+        viewHolder.appEnabledView.isChecked = enabledFilters.contains(appInfo.packageName)
+        viewHolder.appEnabledView.setOnCheckedChangeListener { view, isChecked ->
+            run {
+                Log.d("MainActivity", "App filter change: " + view.tag + " -> " + isChecked)
+                if (isChecked) {
+                    enabledFilters.add(view.tag as String)
+                } else {
+                    enabledFilters.remove(view.tag as String)
+                }
+            }
+        }
     }
 
     // Return the size of your dataset (invoked by the layout manager)

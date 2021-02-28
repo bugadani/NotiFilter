@@ -21,12 +21,12 @@
         tools:text="App name" />
 
     <Switch
-        android:id="@+id/switch1"
+        android:id="@+id/appEnabled"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="@id/appIcon"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/appIcon"
-        app:layout_constraintBottom_toBottomOf="@id/appIcon" />
+        app:layout_constraintTop_toTopOf="@id/appIcon" />
 
     <ImageView
         android:id="@+id/appIcon"
