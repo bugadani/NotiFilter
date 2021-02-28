@@ -4,16 +4,24 @@ import android.app.*
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.Intent.ACTION_SCREEN_OFF
-import android.content.Intent.ACTION_SCREEN_ON
+import android.content.Intent.*
 import android.content.IntentFilter
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.IBinder
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 
 class UnlockReceiver(val context: StartupService) : BroadcastReceiver() {
     companion object {
@@ -33,6 +41,7 @@ class NotificationListener : NotificationListenerService() {
     companion object {
         const val TAG = "NotificationListener"
     }
+
     private var proxied: HashSet<NotificationGroup> = HashSet()
     private val channel = NotificationChannel("P", "Proxied Notifications", NotificationManager.IMPORTANCE_LOW).apply {
         this.description = "The proxied notifications"
@@ -150,6 +159,7 @@ class StartupService : Service() {
         const val TAG = "Startup service"
         const val ONGOING_NOTIFICATION_ID = 1
     }
+
     private val receiver = UnlockReceiver(this)
     private val channel = NotificationChannel("N", "Foreground Service Notification", NotificationManager.IMPORTANCE_LOW).apply {
         this.description = "Sorry"
@@ -192,10 +202,67 @@ class MainActivity : AppCompatActivity() {
         const val TAG = "MainActivity"
     }
 
+    private lateinit var linearLayoutManager: LinearLayoutManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         startForegroundService(Intent(this, StartupService::class.java))
 
         setContentView(R.layout.activity_main)
+        linearLayoutManager = LinearLayoutManager(this)
+
+        // List installed apps
+        val packages = packageManager.queryIntentActivities(Intent(ACTION_MAIN, null), 0)
+        val elements = ArrayList<AppInfoElement>()
+        val seen = HashSet<CharSequence>()
+        for (resInfo in packages) {
+            val appInfo = packageManager.getApplicationInfo(resInfo.activityInfo.packageName, 0)
+
+            if (seen.add(appInfo.loadLabel(packageManager))) {
+                elements.add(AppInfoElement(appInfo, this))
+            }
+        }
+
+        val appList: RecyclerView = findViewById(R.id.appList)
+        appList.layoutManager = linearLayoutManager
+        appList.adapter = AppListItemAdapter(elements)
     }
+}
+
+class AppInfoElement(appInfo: ApplicationInfo, context: Context) {
+    val appName: CharSequence = appInfo.loadLabel(context.packageManager)
+    val appIcon: Drawable = appInfo.loadIcon(context.packageManager)
+}
+
+class AppListItemAdapter(private val dataSet: ArrayList<AppInfoElement>) :
+        RecyclerView.Adapter<AppListItemAdapter.ViewHolder>() {
+
+    /**
+     * Provide a reference to the type of views that you are using
+     * (custom ViewHolder).
+     */
+    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val appNameView: TextView = view.findViewById(R.id.appName)
+        val appIconView: ImageView = view.findViewById(R.id.appIcon)
+    }
+
+    // Create new views (invoked by the layout manager)
+    override fun onCreateViewHolder(viewGroup: ViewGroup, viewType: Int): ViewHolder {
+        // Create a new view, which defines the UI of the list item
+        val view = LayoutInflater.from(viewGroup.context)
+                .inflate(R.layout.app_list_item, viewGroup, false)
+
+        return ViewHolder(view)
+    }
+
+    // Replace the contents of a view (invoked by the layout manager)
+    override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
+        val appInfo = dataSet[position]
+
+        viewHolder.appNameView.text = appInfo.appName
+        viewHolder.appIconView.setImageDrawable(appInfo.appIcon)
+    }
+
+    // Return the size of your dataset (invoked by the layout manager)
+    override fun getItemCount() = dataSet.size
 }
