@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.Intent.ACTION_SCREEN_OFF
 import android.content.Intent.ACTION_SCREEN_ON
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.IBinder
 import android.service.notification.NotificationListenerService
@@ -15,7 +16,9 @@ import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 
 class UnlockReceiver(val context: StartupService) : BroadcastReceiver() {
-    private val TAG = "UnlockReceiver"
+    companion object {
+        const val TAG = "UnlockReceiver"
+    }
 
     override fun onReceive(appContext: Context?, intent: Intent) {
         val serviceIntent = Intent(context, NotificationListener::class.java).apply {
@@ -27,8 +30,10 @@ class UnlockReceiver(val context: StartupService) : BroadcastReceiver() {
 }
 
 class NotificationListener : NotificationListenerService() {
+    companion object {
+        const val TAG = "NotificationListener"
+    }
     private var proxied: HashSet<NotificationGroup> = HashSet()
-    private val TAG = "NotificationListener"
     private val channel = NotificationChannel("P", "Proxied Notifications", NotificationManager.IMPORTANCE_LOW).apply {
         this.description = "The proxied notifications"
     }
@@ -108,6 +113,7 @@ class NotificationListener : NotificationListenerService() {
         if (proxied.add(group)) {
             Log.d(TAG, "Proxying notification: " + sbn.notification.tickerText)
             Log.d(TAG, "Group: $group")
+            Log.d(TAG, "Category: ${sbn.notification.category}")
 
             // new notification group
             try {
@@ -140,9 +146,11 @@ class NotificationListener : NotificationListenerService() {
 }
 
 class StartupService : Service() {
+    companion object {
+        const val TAG = "Startup service"
+        const val ONGOING_NOTIFICATION_ID = 1
+    }
     private val receiver = UnlockReceiver(this)
-    private val TAG = "Startup service"
-    private val ONGOING_NOTIFICATION_ID = 1
     private val channel = NotificationChannel("N", "Foreground Service Notification", NotificationManager.IMPORTANCE_LOW).apply {
         this.description = "Sorry"
     }
@@ -180,9 +188,14 @@ class StartupService : Service() {
 }
 
 class MainActivity : AppCompatActivity() {
+    companion object {
+        const val TAG = "MainActivity"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         startForegroundService(Intent(this, StartupService::class.java))
+
         setContentView(R.layout.activity_main)
     }
 }
