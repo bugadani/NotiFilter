@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.Intent.*
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.IBinder
@@ -23,7 +22,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
-class UnlockReceiver(val context: StartupService) : BroadcastReceiver() {
+class UnlockReceiver(private val context: StartupService) : BroadcastReceiver() {
     companion object {
         const val TAG = "UnlockReceiver"
     }
@@ -49,6 +48,7 @@ class NotificationListener : NotificationListenerService() {
     private var enabled = false
     private var connected = false
     private var id = 0
+    private val enabledFilters = HashSet<String>()
 
     override fun onListenerConnected() {
         Log.d(TAG, "NotificationListener: connected")
@@ -109,11 +109,7 @@ class NotificationListener : NotificationListenerService() {
     }
 
     private fun shouldProxyForApp(sbn: StatusBarNotification): Boolean {
-        // needs a list of apps
-        if (sbn.packageName == "hu.bugadani.notifilter") {
-            return false
-        }
-        return true
+        return enabledFilters.contains(sbn.packageName)
     }
 
     private fun proxyNotification(sbn: StatusBarNotification) {
@@ -203,6 +199,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var linearLayoutManager: LinearLayoutManager
+    private val enabledFilters = HashSet<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -211,11 +208,16 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         linearLayoutManager = LinearLayoutManager(this)
 
+        // TODO: loadEnabledFilters
+
         // List installed apps
         val packages = packageManager.queryIntentActivities(Intent(ACTION_MAIN, null), 0)
         val elements = ArrayList<AppInfoElement>()
         val seen = HashSet<CharSequence>()
         for (resInfo in packages) {
+            if (resInfo.activityInfo.packageName == "hu.bugadani.notifilter") {
+                continue
+            }
             val appInfo = packageManager.getApplicationInfo(resInfo.activityInfo.packageName, 0)
 
             if (seen.add(appInfo.loadLabel(packageManager))) {
@@ -223,18 +225,25 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        elements.sortBy { it.appName }
+
         val appList: RecyclerView = findViewById(R.id.appList)
         appList.layoutManager = linearLayoutManager
-        appList.adapter = AppListItemAdapter(elements)
+        appList.adapter = AppListItemAdapter(elements, enabledFilters)
+    }
+
+    override fun onPause() {
+        // TODO: save enabledFilters
+        super.onPause()
     }
 }
 
 class AppInfoElement(appInfo: ApplicationInfo, context: Context) {
-    val appName: CharSequence = appInfo.loadLabel(context.packageManager)
+    val appName: String = appInfo.loadLabel(context.packageManager).toString()
     val appIcon: Drawable = appInfo.loadIcon(context.packageManager)
 }
 
-class AppListItemAdapter(private val dataSet: ArrayList<AppInfoElement>) :
+class AppListItemAdapter(private val dataSet: ArrayList<AppInfoElement>, private val enabledFilters: HashSet<String>) :
         RecyclerView.Adapter<AppListItemAdapter.ViewHolder>() {
 
     /**
