@@ -107,7 +107,18 @@ class NotificationListener : NotificationListenerService() {
             Log.d(TAG, "Notification ignored: app ignored")
             return
         }
+        if (isRepost(sbn)) {
+            Log.d(TAG, "Notification ignored: already notified")
+            return
+        }
         proxyNotification(sbn)
+    }
+
+    private fun isRepost(sbn: StatusBarNotification): Boolean {
+        val group = notificationGroup(sbn)
+        val old = proxied[group]
+
+        return old != null && old > System.currentTimeMillis() + RELAX_TIME_MS
     }
 
     private fun shouldProxyForApp(sbn: StatusBarNotification): Boolean {
@@ -116,14 +127,6 @@ class NotificationListener : NotificationListenerService() {
 
     private fun proxyNotification(sbn: StatusBarNotification) {
         val group = notificationGroup(sbn)
-
-        val old = proxied[group]
-        val ignored = old != null && old > System.currentTimeMillis() + RELAX_TIME_MS
-
-        if (ignored) {
-            Log.d(TAG, "Notification ignored: already notified")
-            return
-        }
 
         proxied[group] = System.currentTimeMillis()
 
@@ -168,8 +171,9 @@ class StartupService : Service() {
     private val channel = NotificationChannel("N", "Foreground Service Notification", NotificationManager.IMPORTANCE_LOW).apply {
         this.description = "Sorry"
     }
+    private val binder = LocalBinder()
+
     val enabledFilters = HashSet<String>()
-    val binder = LocalBinder()
 
     override fun onCreate() {
         super.onCreate()
