@@ -6,7 +6,6 @@ import android.content.Intent.*
 import android.content.pm.ApplicationInfo
 import android.graphics.drawable.Drawable
 import android.os.Binder
-import android.os.Bundle
 import android.os.IBinder
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
@@ -48,6 +47,7 @@ class NotificationListener : NotificationListenerService() {
     }
     private var enabled = false
     private var connected = false
+    private var hasFilters = false
     private var id = 0
     private var enabledFilters = HashSet<String>()
 
@@ -76,9 +76,23 @@ class NotificationListener : NotificationListenerService() {
             }
             ACTION_SCREEN_OFF -> {
                 Log.d(TAG, "NotificationListener started")
-                enabledFilters = intent.extras?.get("enabled") as HashSet<String>
+                val extras = intent.extras?.get("enabled")
+                if (extras != null) {
+                    enabledFilters = extras as HashSet<String>
+                    hasFilters = true
+                }
                 enabled = true
             }
+        }
+
+        // In case we get killed and restarted, intent may be null. Try to read filter from preferences
+        if (!hasFilters) {
+            val preferences = getSharedPreferences("appSettings", Context.MODE_PRIVATE)
+            val set = preferences.getStringSet("filter", HashSet())
+            if (set != null) {
+                enabledFilters.addAll(set)
+            }
+            hasFilters = true
         }
 
         return super.onStartCommand(intent, flags, startId)
@@ -216,13 +230,13 @@ class StartupService : Service() {
         return binder
     }
 
-    override fun onUnbind(intent: Intent?): Boolean {
+    fun persistPreferences() {
+        Log.d(TAG, "Saving preferences")
         val preferences = getSharedPreferences("appSettings", Context.MODE_PRIVATE)
         with(preferences.edit()) {
             putStringSet("filter", enabledFilters)
             apply()
         }
-        return super.onUnbind(intent)
     }
 
     inner class LocalBinder : Binder() {
@@ -238,10 +252,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var linearLayoutManager: LinearLayoutManager
+    private var service: StartupService? = null
 
     private val connection: ServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(componentName: ComponentName, iBinder: IBinder) {
-            val service: StartupService = (iBinder as StartupService.LocalBinder).getService()
+            val s = (iBinder as StartupService.LocalBinder).getService()
 
             setContentView(R.layout.activity_main)
             linearLayoutManager = LinearLayoutManager(this@MainActivity)
@@ -265,11 +280,13 @@ class MainActivity : AppCompatActivity() {
 
             val appList: RecyclerView = findViewById(R.id.appList)
             appList.layoutManager = linearLayoutManager
-            appList.adapter = AppListItemAdapter(elements, service.enabledFilters)
+            appList.adapter = AppListItemAdapter(elements, s.enabledFilters)
+
+            service = s
         }
 
         override fun onServiceDisconnected(componentName: ComponentName) {
-
+            service = null
         }
     }
 
@@ -282,6 +299,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         try {
+            service?.persistPreferences()
             unbindService(connection)
         } catch (e: IllegalArgumentException) {
             Log.e(TAG, "Exception: $e")
