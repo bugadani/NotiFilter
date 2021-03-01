@@ -158,6 +158,7 @@ class NotificationListener : NotificationListenerService() {
                     .setCustomBigContentView(sbn.notification.bigContentView)
                     .setCategory(sbn.notification.category)
                     .setTicker(sbn.notification.tickerText)
+                    .setAutoCancel(sbn.notification.flags.and(Notification.FLAG_AUTO_CANCEL) != 0)
                     .build()
 
             val notificationManager = getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
