@@ -25,7 +25,6 @@ class NotificationListener : NotificationListenerService() {
     companion object {
         const val TAG = "NotificationListener"
         const val RELAX_TIME_MS = 1000 * 60
-        const val ONGOING_NOTIFICATION_ID = 1
     }
 
     private val receiver = UnlockReceiver(this)
@@ -39,10 +38,8 @@ class NotificationListener : NotificationListenerService() {
     }
     private var enabled = false
     private var connected = false
-    private var hasFilters = false
     private var id = 0
     var enabledFilters = HashSet<String>()
-    private val binder = LocalBinder()
 
     override fun onCreate() {
         super.onCreate()
@@ -52,10 +49,6 @@ class NotificationListener : NotificationListenerService() {
             "appSettings",
             Context.MODE_PRIVATE
         )
-        val set = preferences.getStringSet("filter", HashSet())
-        if (set != null) {
-            enabledFilters.addAll(set)
-        }
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
@@ -110,29 +103,15 @@ class NotificationListener : NotificationListenerService() {
                 )
             }
 
-        val notification = Notification.Builder(this, channel.id)
-            .setContentTitle(getText(R.string.notification_title))
-            .setContentText(getText(R.string.notification_message))
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentIntent(pendingIntent)
-            .setTicker(getText(R.string.ticker_text))
-            .build()
-
-        startForeground(ONGOING_NOTIFICATION_ID, notification)
-
         proxied.clear()
 
-        // In case we get killed and restarted, intent may be null. Try to read filter from preferences
-        if (!hasFilters) {
-            val preferences = getSharedPreferences(
-                "appSettings",
-                Context.MODE_PRIVATE
-            )
-            val set = preferences.getStringSet("filter", HashSet())
-            if (set != null) {
-                enabledFilters.addAll(set)
-            }
-            hasFilters = true
+        val preferences = getSharedPreferences(
+            "appSettings",
+            Context.MODE_PRIVATE
+        )
+        val set = preferences.getStringSet("filter", HashSet())
+        if (set != null) {
+            enabledFilters.addAll(set)
         }
 
         return super.onStartCommand(intent, flags, startId)
@@ -149,7 +128,7 @@ class NotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         Log.d(
             TAG,
-            "Notification posted: " + sbn.notification.tickerText
+            "Notification posted: ${sbn.notification}"
         )
         if (!connected || !enabled) {
             Log.d(TAG, "Notification ignored: disabled")
@@ -168,6 +147,14 @@ class NotificationListener : NotificationListenerService() {
             return
         }
         proxyNotification(sbn)
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        Log.d(
+            TAG,
+            "Notification removed: ${sbn.notification}"
+        )
+        super.onNotificationRemoved(sbn)
     }
 
     private fun isRepost(sbn: StatusBarNotification): Boolean {
@@ -223,28 +210,6 @@ class NotificationListener : NotificationListenerService() {
         val notificationManager =
             getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancelAll()
-    }
-
-    override fun onBind(intent: Intent?): IBinder {
-        return binder
-    }
-
-    fun persistPreferences() {
-        Log.d(TAG, "Saving preferences")
-        val preferences = getSharedPreferences(
-            "appSettings",
-            Context.MODE_PRIVATE
-        )
-        with(preferences.edit()) {
-            putStringSet("filter", enabledFilters)
-            apply()
-        }
-    }
-
-    inner class LocalBinder : Binder() {
-        fun getService(): NotificationListener {
-            return this@NotificationListener
-        }
     }
 
     data class NotificationGroup(val pkg: String, val groupKey: String)
