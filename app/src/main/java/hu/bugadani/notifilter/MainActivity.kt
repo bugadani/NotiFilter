@@ -20,27 +20,30 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
-class UnlockReceiver(private val context: StartupService) : BroadcastReceiver() {
-    companion object {
-        const val TAG = "UnlockReceiver"
-    }
-
-    override fun onReceive(appContext: Context?, intent: Intent) {
-        val serviceIntent = Intent(context, NotificationListener::class.java).apply {
-            putExtra("action", intent.action)
-            putExtra("enabled", context.enabledFilters)
-        }
-        Log.d(TAG, "onReceive: " + intent.action)
-        context.startService(serviceIntent)
-    }
-}
-
 class NotificationListener : NotificationListenerService() {
+
+    class UnlockReceiver(private val context: NotificationListener) : BroadcastReceiver() {
+        companion object {
+            const val TAG = "UnlockReceiver"
+        }
+
+        override fun onReceive(appContext: Context?, intent: Intent) {
+            val serviceIntent = Intent(context, NotificationListener::class.java).apply {
+                putExtra("action", intent.action)
+                putExtra("enabled", context.enabledFilters)
+            }
+            Log.d(TAG, "onReceive: " + intent.action)
+            context.startService(serviceIntent)
+        }
+    }
+
     companion object {
         const val TAG = "NotificationListener"
         const val RELAX_TIME_MS = 1000 * 60
+        const val ONGOING_NOTIFICATION_ID = 1
     }
 
+    private val receiver = UnlockReceiver(this)
     private var proxied: HashMap<NotificationGroup, Long> = HashMap()
     private val channel = NotificationChannel("P", "Proxied Notifications", NotificationManager.IMPORTANCE_LOW).apply {
         this.description = "The proxied notifications"
@@ -49,7 +52,18 @@ class NotificationListener : NotificationListenerService() {
     private var connected = false
     private var hasFilters = false
     private var id = 0
-    private var enabledFilters = HashSet<String>()
+    var enabledFilters = HashSet<String>()
+    private val binder = LocalBinder()
+
+    override fun onCreate() {
+        super.onCreate()
+
+        val preferences = getSharedPreferences("appSettings", Context.MODE_PRIVATE)
+        val set = preferences.getStringSet("filter", HashSet())
+        if (set != null) {
+            enabledFilters.addAll(set)
+        }
+    }
 
     override fun onListenerConnected() {
         Log.d(TAG, "NotificationListener: connected")
@@ -64,8 +78,29 @@ class NotificationListener : NotificationListenerService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notificationManager = getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
+        Log.d(TAG, "onStartCommand")
+
+        val pendingIntent: PendingIntent =
+                Intent(this, MainActivity::class.java).let { notificationIntent ->
+                    PendingIntent.getActivity(this, 0, notificationIntent, 0)
+                }
+
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
+
+        val notification = Notification.Builder(this, channel.id)
+                .setContentTitle(getText(R.string.notification_title))
+                .setContentText(getText(R.string.notification_message))
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setContentIntent(pendingIntent)
+                .setTicker(getText(R.string.ticker_text))
+                .build()
+
+        startForeground(ONGOING_NOTIFICATION_ID, notification)
+
+        registerReceiver(receiver, IntentFilter(ACTION_SCREEN_ON))
+        registerReceiver(receiver, IntentFilter(ACTION_SCREEN_OFF))
+
         proxied.clear()
 
         when (intent?.extras?.get("action")) {
@@ -173,60 +208,6 @@ class NotificationListener : NotificationListenerService() {
         return NotificationGroup(sbn.packageName, sbn.groupKey)
     }
 
-    data class NotificationGroup(val pkg: String, val groupKey: String)
-}
-
-class StartupService : Service() {
-    companion object {
-        const val TAG = "Startup service"
-        const val ONGOING_NOTIFICATION_ID = 1
-    }
-
-    private val receiver = UnlockReceiver(this)
-    private val channel = NotificationChannel("N", "Foreground Service Notification", NotificationManager.IMPORTANCE_LOW).apply {
-        this.description = "Sorry"
-    }
-    private val binder = LocalBinder()
-
-    val enabledFilters = HashSet<String>()
-
-    override fun onCreate() {
-        super.onCreate()
-
-        val preferences = getSharedPreferences("appSettings", Context.MODE_PRIVATE)
-        val set = preferences.getStringSet("filter", HashSet())
-        if (set != null) {
-            enabledFilters.addAll(set)
-        }
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "onStartCommand")
-
-        val pendingIntent: PendingIntent =
-                Intent(this, MainActivity::class.java).let { notificationIntent ->
-                    PendingIntent.getActivity(this, 0, notificationIntent, 0)
-                }
-
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(channel)
-
-        val notification = Notification.Builder(this, channel.id)
-                .setContentTitle(getText(R.string.notification_title))
-                .setContentText(getText(R.string.notification_message))
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentIntent(pendingIntent)
-                .setTicker(getText(R.string.ticker_text))
-                .build()
-
-        startForeground(ONGOING_NOTIFICATION_ID, notification)
-
-        registerReceiver(receiver, IntentFilter(ACTION_SCREEN_ON))
-        registerReceiver(receiver, IntentFilter(ACTION_SCREEN_OFF))
-
-        return super.onStartCommand(intent, flags, startId)
-    }
-
     override fun onBind(intent: Intent?): IBinder {
         return binder
     }
@@ -241,10 +222,12 @@ class StartupService : Service() {
     }
 
     inner class LocalBinder : Binder() {
-        fun getService(): StartupService {
-            return this@StartupService
+        fun getService(): NotificationListener {
+            return this@NotificationListener
         }
     }
+
+    data class NotificationGroup(val pkg: String, val groupKey: String)
 }
 
 class MainActivity : AppCompatActivity() {
@@ -253,11 +236,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var linearLayoutManager: LinearLayoutManager
-    private var service: StartupService? = null
+    private var service: NotificationListener? = null
 
     private val connection: ServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(componentName: ComponentName, iBinder: IBinder) {
-            val s = (iBinder as StartupService.LocalBinder).getService()
+            val s = (iBinder as NotificationListener.LocalBinder).getService()
 
             setContentView(R.layout.activity_main)
             linearLayoutManager = LinearLayoutManager(this@MainActivity)
@@ -294,8 +277,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
 
-        startForegroundService(Intent(this, StartupService::class.java))
-        bindService(Intent(this, StartupService::class.java), connection, Context.BIND_AUTO_CREATE)
+        startForegroundService(Intent(this, NotificationListener::class.java))
+        bindService(Intent(this, NotificationListener::class.java), connection, Context.BIND_AUTO_CREATE)
     }
 
     override fun onPause() {
