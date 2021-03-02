@@ -47,6 +47,7 @@ class NotificationListener : NotificationListenerService() {
     override fun onCreate() {
         super.onCreate()
 
+        Log.d(TAG, "onCreate: read filter")
         val preferences = getSharedPreferences(
             "appSettings",
             Context.MODE_PRIVATE
@@ -59,6 +60,7 @@ class NotificationListener : NotificationListenerService() {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
 
+        Log.d(TAG, "onCreate: register screen state receiver")
         registerReceiver(
             receiver,
             IntentFilter(Intent.ACTION_SCREEN_ON)
