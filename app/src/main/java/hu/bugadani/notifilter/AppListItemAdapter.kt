@@ -7,10 +7,12 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.Switch
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 
-class AppListItemAdapter(private val dataSet: ArrayList<AppInfoElement>, private val enabledFilters: HashSet<String>) :
-        RecyclerView.Adapter<AppListItemAdapter.ViewHolder>() {
+class AppListItemAdapter(private val enabledFilters: HashSet<String>) :
+    ListAdapter<AppListItem, AppListItemAdapter.ViewHolder>(Differ()) {
 
     /**
      * Provide a reference to the type of views that you are using
@@ -32,17 +34,17 @@ class AppListItemAdapter(private val dataSet: ArrayList<AppInfoElement>, private
     override fun onCreateViewHolder(viewGroup: ViewGroup, viewType: Int): ViewHolder {
         // Create a new view, which defines the UI of the list item
         val view = LayoutInflater.from(viewGroup.context)
-                .inflate(R.layout.app_list_item, viewGroup, false)
+            .inflate(R.layout.app_list_item, viewGroup, false)
 
         return ViewHolder(view)
     }
 
     // Replace the contents of a view (invoked by the layout manager)
     override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
-        val appInfo = dataSet[position]
+        val appInfo = getItem(position)
 
         viewHolder.appNameView.text = appInfo.appName
-        viewHolder.appIconView.setImageDrawable(appInfo.appIcon)
+        viewHolder.appIconView.setImageDrawable(appInfo.icon)
         viewHolder.appEnabledView.tag = appInfo.packageName
         viewHolder.appEnabledView.isChecked = enabledFilters.contains(appInfo.packageName)
         viewHolder.appEnabledView.setOnCheckedChangeListener { view, isChecked ->
@@ -59,7 +61,15 @@ class AppListItemAdapter(private val dataSet: ArrayList<AppInfoElement>, private
             }
         }
     }
+}
 
-    // Return the size of your dataset (invoked by the layout manager)
-    override fun getItemCount() = dataSet.size
+class Differ : DiffUtil.ItemCallback<AppListItem>() {
+    override fun areItemsTheSame(oldItem: AppListItem, newItem: AppListItem): Boolean {
+        return oldItem == newItem
+    }
+
+    override fun areContentsTheSame(oldItem: AppListItem, newItem: AppListItem): Boolean {
+        return oldItem == newItem
+    }
+
 }
