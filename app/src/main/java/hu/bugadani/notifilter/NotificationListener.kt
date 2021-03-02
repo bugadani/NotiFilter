@@ -139,9 +139,9 @@ class NotificationListener : NotificationListenerService() {
 
     private fun isRepost(sbn: StatusBarNotification): Boolean {
         val group = notificationGroup(sbn)
-        val old = proxied[group]
+        val expiration = proxied[group]
 
-        return old != null && old > System.currentTimeMillis() + RELAX_TIME_MS
+        return expiration != null && expiration > System.currentTimeMillis()
     }
 
     private fun shouldProxyForApp(sbn: StatusBarNotification): Boolean {
@@ -151,7 +151,7 @@ class NotificationListener : NotificationListenerService() {
     private fun proxyNotification(sbn: StatusBarNotification) {
         val group = notificationGroup(sbn)
 
-        proxied[group] = System.currentTimeMillis()
+        proxied[group] = System.currentTimeMillis() + RELAX_TIME_MS
 
         Log.d(
             TAG,
