@@ -1,13 +1,13 @@
 package hu.bugadani.notifilter
 
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.content.Intent.ACTION_MAIN
-import android.content.ServiceConnection
-import android.os.IBinder
+import android.content.SharedPreferences
+import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.widget.ProgressBar
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -16,59 +16,58 @@ class MainActivity : AppCompatActivity() {
         const val TAG = "MainActivity"
     }
 
-    private lateinit var linearLayoutManager: LinearLayoutManager
-    private var service: NotificationListener? = null
+    private lateinit var appListView: RecyclerView
+    private lateinit var appsLoadingView: ProgressBar
+    private val enabledFilters = HashSet<String>()
+    private lateinit var viewModel: AppListViewModel
 
-    private val connection: ServiceConnection = object : ServiceConnection {
-        override fun onServiceConnected(componentName: ComponentName, iBinder: IBinder) {
-            val s = (iBinder as NotificationListener.LocalBinder).getService()
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-            setContentView(R.layout.activity_main)
-            linearLayoutManager = LinearLayoutManager(this@MainActivity)
+        setContentView(R.layout.activity_main)
 
-            // List installed apps
-            val packages = packageManager.queryIntentActivities(Intent(ACTION_MAIN, null), 0)
-            val elements = ArrayList<AppInfoElement>()
-            val seen = HashSet<CharSequence>()
-            for (resInfo in packages) {
-                if (resInfo.activityInfo.packageName == "hu.bugadani.notifilter") {
-                    continue
-                }
-                val appInfo = packageManager.getApplicationInfo(resInfo.activityInfo.packageName, 0)
+        viewModel = AppListViewModel(packageManager)
 
-                if (seen.add(appInfo.loadLabel(packageManager))) {
-                    elements.add(AppInfoElement(appInfo, this@MainActivity))
-                }
-            }
-
-            elements.sortBy { it.appName }
-
-            val appList: RecyclerView = findViewById(R.id.appList)
-            appList.layoutManager = linearLayoutManager
-            appList.adapter = AppListItemAdapter(elements, s.enabledFilters)
-
-            service = s
+        appListView = findViewById<RecyclerView>(R.id.appList).apply {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = AppListItemAdapter(enabledFilters)
+            setHasFixedSize(true)
         }
+        appsLoadingView = findViewById(R.id.appsLoading)
+    }
 
-        override fun onServiceDisconnected(componentName: ComponentName) {
-            service = null
-        }
+    private fun getPreferences(): SharedPreferences {
+        return getSharedPreferences(
+            "appSettings",
+            Context.MODE_PRIVATE
+        )
     }
 
     override fun onResume() {
+        Log.d(NotificationListener.TAG, "onResume")
+
         super.onResume()
 
-        startForegroundService(Intent(this, NotificationListener::class.java))
-        bindService(Intent(this, NotificationListener::class.java), connection, Context.BIND_AUTO_CREATE)
+        val preferences = getPreferences()
+        val set = preferences.getStringSet("filter", HashSet())
+        if (set != null) {
+            enabledFilters.addAll(set)
+        }
+
+        viewModel.appListItems.observe(this, Observer { items ->
+            (appListView.adapter as AppListItemAdapter).submitList(items)
+            appsLoadingView.visibility = View.GONE
+        })
     }
 
     override fun onPause() {
-        try {
-            service?.persistPreferences()
-            unbindService(connection)
-        } catch (e: IllegalArgumentException) {
-            Log.e(TAG, "Exception: $e")
+        Log.d(TAG, "Saving preferences")
+        val preferences = getPreferences()
+        with(preferences.edit()) {
+            putStringSet("filter", enabledFilters)
+            apply()
         }
+
         super.onPause()
     }
 }

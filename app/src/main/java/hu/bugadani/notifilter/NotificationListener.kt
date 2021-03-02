@@ -5,8 +5,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Binder
-import android.os.IBinder
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -25,7 +23,6 @@ class NotificationListener : NotificationListenerService() {
     companion object {
         const val TAG = "NotificationListener"
         const val RELAX_TIME_MS = 1000 * 60
-        const val ONGOING_NOTIFICATION_ID = 1
     }
 
     private val receiver = UnlockReceiver(this)
@@ -39,36 +36,20 @@ class NotificationListener : NotificationListenerService() {
     }
     private var enabled = false
     private var connected = false
-    private var hasFilters = false
     private var id = 0
     var enabledFilters = HashSet<String>()
-    private val binder = LocalBinder()
 
     override fun onCreate() {
         super.onCreate()
 
-        Log.d(TAG, "onCreate: read filter")
-        val preferences = getSharedPreferences(
-            "appSettings",
-            Context.MODE_PRIVATE
-        )
-        val set = preferences.getStringSet("filter", HashSet())
-        if (set != null) {
-            enabledFilters.addAll(set)
-        }
+        Log.d(TAG, "onCreate")
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
 
         Log.d(TAG, "onCreate: register screen state receiver")
-        registerReceiver(
-            receiver,
-            IntentFilter(Intent.ACTION_SCREEN_ON)
-        )
-        registerReceiver(
-            receiver,
-            IntentFilter(Intent.ACTION_SCREEN_OFF)
-        )
+        registerReceiver(receiver, IntentFilter(Intent.ACTION_SCREEN_ON))
+        registerReceiver(receiver, IntentFilter(Intent.ACTION_SCREEN_OFF))
     }
 
     private fun onScreenOn() {
@@ -80,6 +61,19 @@ class NotificationListener : NotificationListenerService() {
     private fun onScreenOff() {
         enabled = true
         Log.d(TAG, "Screen off")
+        updateFilter()
+    }
+
+    private fun updateFilter() {
+        val preferences = getSharedPreferences(
+            "appSettings",
+            Context.MODE_PRIVATE
+        )
+        val set = preferences.getStringSet("filter", HashSet())
+        if (set != null) {
+            enabledFilters.clear()
+            enabledFilters.addAll(set)
+        }
     }
 
     override fun onListenerConnected() {
@@ -97,50 +91,15 @@ class NotificationListener : NotificationListenerService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "onStartCommand")
 
-        val pendingIntent: PendingIntent =
-            Intent(
-                this,
-                MainActivity::class.java
-            ).let { notificationIntent ->
-                PendingIntent.getActivity(
-                    this,
-                    0,
-                    notificationIntent,
-                    0
-                )
-            }
-
-        val notification = Notification.Builder(this, channel.id)
-            .setContentTitle(getText(R.string.notification_title))
-            .setContentText(getText(R.string.notification_message))
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentIntent(pendingIntent)
-            .setTicker(getText(R.string.ticker_text))
-            .build()
-
-        startForeground(ONGOING_NOTIFICATION_ID, notification)
-
         proxied.clear()
-
-        // In case we get killed and restarted, intent may be null. Try to read filter from preferences
-        if (!hasFilters) {
-            val preferences = getSharedPreferences(
-                "appSettings",
-                Context.MODE_PRIVATE
-            )
-            val set = preferences.getStringSet("filter", HashSet())
-            if (set != null) {
-                enabledFilters.addAll(set)
-            }
-            hasFilters = true
-        }
+        updateFilter()
 
         return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onDestroy() {
-        cancelAllNotifications()
-
+        clearAllNotifications()
+        unregisterReceiver(receiver)
         Log.d(TAG, "NotificationListener destroyed")
 
         super.onDestroy()
@@ -149,7 +108,7 @@ class NotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         Log.d(
             TAG,
-            "Notification posted: " + sbn.notification.tickerText
+            "Notification posted: ${sbn.notification}"
         )
         if (!connected || !enabled) {
             Log.d(TAG, "Notification ignored: disabled")
@@ -168,6 +127,14 @@ class NotificationListener : NotificationListenerService() {
             return
         }
         proxyNotification(sbn)
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        Log.d(
+            TAG,
+            "Notification removed: ${sbn.notification}"
+        )
+        super.onNotificationRemoved(sbn)
     }
 
     private fun isRepost(sbn: StatusBarNotification): Boolean {
@@ -220,30 +187,10 @@ class NotificationListener : NotificationListenerService() {
     }
 
     private fun clearAllNotifications() {
-        val notificationManager =
-            getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.cancelAll()
-    }
-
-    override fun onBind(intent: Intent?): IBinder {
-        return binder
-    }
-
-    fun persistPreferences() {
-        Log.d(TAG, "Saving preferences")
-        val preferences = getSharedPreferences(
-            "appSettings",
-            Context.MODE_PRIVATE
-        )
-        with(preferences.edit()) {
-            putStringSet("filter", enabledFilters)
-            apply()
-        }
-    }
-
-    inner class LocalBinder : Binder() {
-        fun getService(): NotificationListener {
-            return this@NotificationListener
+        if (connected) {
+            val notificationManager =
+                getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.cancelAll()
         }
     }
 
