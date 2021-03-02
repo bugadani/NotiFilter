@@ -15,7 +15,7 @@ class NotificationListener : NotificationListenerService() {
 
     class UnlockReceiver(private val context: NotificationListener) : BroadcastReceiver() {
         override fun onReceive(appContext: Context?, intent: Intent) {
-            when (intent.extras?.get("action")) {
+            when (intent.action) {
                 Intent.ACTION_SCREEN_ON -> context.onScreenOn()
                 Intent.ACTION_SCREEN_OFF -> context.onScreenOff()
             }
@@ -44,17 +44,6 @@ class NotificationListener : NotificationListenerService() {
     var enabledFilters = HashSet<String>()
     private val binder = LocalBinder()
 
-    private fun onScreenOn() {
-        Log.d(TAG, "Screen on")
-        enabled = false
-        clearAllNotifications()
-    }
-
-    private fun onScreenOff() {
-        enabled = true
-        Log.d(TAG, "Screen off")
-    }
-
     override fun onCreate() {
         super.onCreate()
 
@@ -78,6 +67,17 @@ class NotificationListener : NotificationListenerService() {
             receiver,
             IntentFilter(Intent.ACTION_SCREEN_OFF)
         )
+    }
+
+    private fun onScreenOn() {
+        Log.d(TAG, "Screen on")
+        enabled = false
+        clearAllNotifications()
+    }
+
+    private fun onScreenOff() {
+        enabled = true
+        Log.d(TAG, "Screen off")
     }
 
     override fun onListenerConnected() {
