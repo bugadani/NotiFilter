@@ -5,4 +5,5 @@
     <string name="notification_title">NotiFilter service</string>
     <string name="notification_message">Sorry about this</string>
     <string name="ticker_text">What is ticker</string>
+    <string name="switchOn">✓</string>
 </resources>

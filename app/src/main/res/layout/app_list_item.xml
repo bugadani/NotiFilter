@@ -24,6 +24,8 @@
         android:id="@+id/appEnabled"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:showText="true"
+        android:textOn="@string/switchOn"
         app:layout_constraintBottom_toBottomOf="@id/appIcon"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/appIcon" />
