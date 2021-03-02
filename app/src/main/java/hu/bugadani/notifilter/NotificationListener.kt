@@ -5,8 +5,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Binder
-import android.os.IBinder
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -44,24 +42,14 @@ class NotificationListener : NotificationListenerService() {
     override fun onCreate() {
         super.onCreate()
 
-        Log.d(TAG, "onCreate: read filter")
-        val preferences = getSharedPreferences(
-            "appSettings",
-            Context.MODE_PRIVATE
-        )
+        Log.d(TAG, "onCreate")
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
 
         Log.d(TAG, "onCreate: register screen state receiver")
-        registerReceiver(
-            receiver,
-            IntentFilter(Intent.ACTION_SCREEN_ON)
-        )
-        registerReceiver(
-            receiver,
-            IntentFilter(Intent.ACTION_SCREEN_OFF)
-        )
+        registerReceiver(receiver, IntentFilter(Intent.ACTION_SCREEN_ON))
+        registerReceiver(receiver, IntentFilter(Intent.ACTION_SCREEN_OFF))
     }
 
     private fun onScreenOn() {
@@ -73,6 +61,19 @@ class NotificationListener : NotificationListenerService() {
     private fun onScreenOff() {
         enabled = true
         Log.d(TAG, "Screen off")
+        updateFilter()
+    }
+
+    private fun updateFilter() {
+        val preferences = getSharedPreferences(
+            "appSettings",
+            Context.MODE_PRIVATE
+        )
+        val set = preferences.getStringSet("filter", HashSet())
+        if (set != null) {
+            enabledFilters.clear()
+            enabledFilters.addAll(set)
+        }
     }
 
     override fun onListenerConnected() {
@@ -90,36 +91,15 @@ class NotificationListener : NotificationListenerService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "onStartCommand")
 
-        val pendingIntent: PendingIntent =
-            Intent(
-                this,
-                MainActivity::class.java
-            ).let { notificationIntent ->
-                PendingIntent.getActivity(
-                    this,
-                    0,
-                    notificationIntent,
-                    0
-                )
-            }
-
         proxied.clear()
-
-        val preferences = getSharedPreferences(
-            "appSettings",
-            Context.MODE_PRIVATE
-        )
-        val set = preferences.getStringSet("filter", HashSet())
-        if (set != null) {
-            enabledFilters.addAll(set)
-        }
+        updateFilter()
 
         return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onDestroy() {
-        cancelAllNotifications()
-
+        clearAllNotifications()
+        unregisterReceiver(receiver)
         Log.d(TAG, "NotificationListener destroyed")
 
         super.onDestroy()
@@ -207,9 +187,11 @@ class NotificationListener : NotificationListenerService() {
     }
 
     private fun clearAllNotifications() {
-        val notificationManager =
-            getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.cancelAll()
+        if (connected) {
+            val notificationManager =
+                getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.cancelAll()
+        }
     }
 
     data class NotificationGroup(val pkg: String, val groupKey: String)

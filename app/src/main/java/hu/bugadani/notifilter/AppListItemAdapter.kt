@@ -48,16 +48,14 @@ class AppListItemAdapter(private val enabledFilters: HashSet<String>) :
         viewHolder.appEnabledView.tag = appInfo.packageName
         viewHolder.appEnabledView.isChecked = enabledFilters.contains(appInfo.packageName)
         viewHolder.appEnabledView.setOnCheckedChangeListener { view, isChecked ->
-            run {
-                Log.d(
-                    "MainActivity",
-                    "App filter change: " + view.tag + " -> " + isChecked
-                )
-                if (isChecked) {
-                    enabledFilters.add(view.tag as String)
-                } else {
-                    enabledFilters.remove(view.tag as String)
-                }
+            Log.d(
+                "MainActivity",
+                "App filter change: " + view.tag + " -> " + isChecked
+            )
+            if (isChecked) {
+                enabledFilters.add(view.tag as String)
+            } else {
+                enabledFilters.remove(view.tag as String)
             }
         }
     }
@@ -71,5 +69,4 @@ class Differ : DiffUtil.ItemCallback<AppListItem>() {
     override fun areContentsTheSame(oldItem: AppListItem, newItem: AppListItem): Boolean {
         return oldItem == newItem
     }
-
 }

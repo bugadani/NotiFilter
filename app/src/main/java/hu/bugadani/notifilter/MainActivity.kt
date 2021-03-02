@@ -1,14 +1,13 @@
 package hu.bugadani.notifilter
 
 import android.content.Context
-import android.content.Intent
-import android.content.Intent.ACTION_MAIN
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.ProgressBar
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -20,15 +19,19 @@ class MainActivity : AppCompatActivity() {
     private lateinit var appListView: RecyclerView
     private lateinit var appsLoadingView: ProgressBar
     private val enabledFilters = HashSet<String>()
+    private lateinit var viewModel: AppListViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_main)
 
+        viewModel = AppListViewModel(packageManager)
+
         appListView = findViewById<RecyclerView>(R.id.appList).apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = AppListItemAdapter(enabledFilters)
+            setHasFixedSize(true)
         }
         appsLoadingView = findViewById(R.id.appsLoading)
     }
@@ -51,34 +54,10 @@ class MainActivity : AppCompatActivity() {
             enabledFilters.addAll(set)
         }
 
-        // List installed apps
-
-        val packages = packageManager.queryIntentActivities(Intent(ACTION_MAIN, null), 0)
-        val seen = HashSet<String>()
-        val elements = ArrayList<AppListItem>()
-        for (resInfo in packages) {
-            if (resInfo.activityInfo.packageName == "hu.bugadani.notifilter") {
-                continue
-            }
-
-            val appInfo = packageManager.getApplicationInfo(resInfo.activityInfo.packageName, 0)
-            val appName = appInfo.loadLabel(packageManager).toString()
-
-            if (seen.add(appName)) {
-                elements.add(
-                    AppListItem(
-                        appName,
-                        appInfo.packageName,
-                        appInfo.loadIcon(packageManager)
-                    )
-                )
-            }
-        }
-
-        elements.sortBy { it.appName }
-
-        appsLoadingView.visibility = View.GONE
-        (appListView.adapter as AppListItemAdapter).submitList(elements)
+        viewModel.appListItems.observe(this, Observer { items ->
+            (appListView.adapter as AppListItemAdapter).submitList(items)
+            appsLoadingView.visibility = View.GONE
+        })
     }
 
     override fun onPause() {
@@ -88,9 +67,6 @@ class MainActivity : AppCompatActivity() {
             putStringSet("filter", enabledFilters)
             apply()
         }
-
-        val pingServiceIntent = Intent(this, NotificationListener::class.java)
-        this.startService(pingServiceIntent)
 
         super.onPause()
     }
