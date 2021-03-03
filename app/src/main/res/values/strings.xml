@@ -7,4 +7,7 @@
     <string name="ticker_text">What is ticker</string>
     <string name="switchOn">✓</string>
     <string name="switchOff" />
+    <string name="five_minute">5\"</string>
+    <string name="one_minute">1\"</string>
+    <string name="manual">✓</string>
 </resources>

@@ -10,47 +10,51 @@
         android:visibility="gone"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="8dp"
+        android:layout_margin="4dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent">
-        <LinearLayout
-            android:id="@+id/background_buttons"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:orientation="horizontal"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent">
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/background_buttons"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:singleSelection="true"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent">
+            <Button
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="@string/one_minute"
+                style="?attr/materialButtonOutlinedStyle"/>
 
             <Button
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:text="1"/>
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="@string/five_minute"
+                style="?attr/materialButtonOutlinedStyle"/>
 
             <Button
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:text="2"/>
-
-            <Button
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:text="3"/>
-
-            <Button
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:text="4"/>
-        </LinearLayout>
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="@string/manual"
+                style="?attr/materialButtonOutlinedStyle"/>
+            </com.google.android.material.button.MaterialButtonToggleGroup>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/foreground"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="8dp"
+        android:layout_margin="4dp"
         android:background="@color/black"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
