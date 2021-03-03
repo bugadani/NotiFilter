@@ -28,15 +28,17 @@ class AppListItemAdapter(private val enabledFilters: HashSet<String>) :
         val appEnabledView: Switch = view.findViewById(
             R.id.appEnabled
         )
+        val background: View = view.findViewById(R.id.background)
+        val backgroundButtons: View = view.findViewById(R.id.background_buttons)
+        val foreground: View = view.findViewById(R.id.foreground)
     }
 
     // Create new views (invoked by the layout manager)
     override fun onCreateViewHolder(viewGroup: ViewGroup, viewType: Int): ViewHolder {
         // Create a new view, which defines the UI of the list item
-        val view = LayoutInflater.from(viewGroup.context)
-            .inflate(R.layout.app_list_item, viewGroup, false)
+        val inflater = LayoutInflater.from(viewGroup.context)
 
-        return ViewHolder(view)
+        return ViewHolder(inflater.inflate(R.layout.app_list_item, viewGroup, false))
     }
 
     // Replace the contents of a view (invoked by the layout manager)

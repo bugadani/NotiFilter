@@ -8,6 +8,7 @@ import android.view.View
 import android.widget.ProgressBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -32,6 +33,9 @@ class MainActivity : AppCompatActivity() {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = AppListItemAdapter(enabledFilters)
             setHasFixedSize(true)
+
+            val itemTouchHelper = ItemTouchHelper(AppListSwipeController())
+            itemTouchHelper.attachToRecyclerView(this)
         }
         appsLoadingView = findViewById(R.id.appsLoading)
     }
