@@ -10,6 +10,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButtonToggleGroup
 
 class AppListItemAdapter(private val enabledFilters: HashSet<String>) :
     ListAdapter<AppListItem, AppListItemAdapter.ViewHolder>(Differ()) {
@@ -29,7 +30,8 @@ class AppListItemAdapter(private val enabledFilters: HashSet<String>) :
             R.id.appEnabled
         )
         val background: View = view.findViewById(R.id.background)
-        val backgroundButtons: View = view.findViewById(R.id.background_buttons)
+        val backgroundButtons: MaterialButtonToggleGroup =
+            view.findViewById(R.id.background_buttons)
         val foreground: View = view.findViewById(R.id.foreground)
     }
 
@@ -48,17 +50,50 @@ class AppListItemAdapter(private val enabledFilters: HashSet<String>) :
         viewHolder.appNameView.text = appInfo.appName
         viewHolder.appIconView.setImageDrawable(appInfo.icon)
         viewHolder.appEnabledView.tag = appInfo.packageName
-        viewHolder.appEnabledView.isChecked = enabledFilters.contains(appInfo.packageName)
+        updateSwitch(viewHolder)
         viewHolder.appEnabledView.setOnCheckedChangeListener { view, isChecked ->
             Log.d(
                 "MainActivity",
                 "App filter change: " + view.tag + " -> " + isChecked
             )
-            if (isChecked) {
-                enabledFilters.add(view.tag as String)
-            } else {
-                enabledFilters.remove(view.tag as String)
+            updateSelection(viewHolder, isChecked)
+            updateButtons(viewHolder, isChecked)
+        }
+        updateButtons(viewHolder, viewHolder.appEnabledView.isChecked)
+
+        viewHolder.backgroundButtons.addOnButtonCheckedListener { group, checkedId, isChecked ->
+            when (checkedId) {
+                R.id.setting_one_minute -> {
+                    updateSelection(viewHolder, isChecked)
+                }
+                R.id.setting_five_minutes -> {
+                    updateSelection(viewHolder, isChecked)
+                }
+                R.id.setting_manual -> {
+                    updateSelection(viewHolder, isChecked)
+                }
             }
+            updateSwitch(viewHolder)
+        }
+    }
+
+    private fun updateSelection(viewHolder: ViewHolder, isChecked: Boolean) {
+        if (isChecked) {
+            enabledFilters.add(viewHolder.appEnabledView.tag as String)
+        } else {
+            enabledFilters.remove(viewHolder.appEnabledView.tag as String)
+        }
+    }
+
+    private fun updateSwitch(viewHolder: ViewHolder) {
+        viewHolder.appEnabledView.isChecked = enabledFilters.contains(viewHolder.appEnabledView.tag)
+    }
+
+    private fun updateButtons(viewHolder: ViewHolder, isChecked: Boolean) {
+        if (isChecked) {
+            viewHolder.backgroundButtons.check(R.id.setting_manual)
+        } else {
+            viewHolder.backgroundButtons.clearChecked()
         }
     }
 }

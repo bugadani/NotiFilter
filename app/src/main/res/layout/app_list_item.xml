@@ -25,6 +25,7 @@
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent">
             <Button
+                android:id="@+id/setting_one_minute"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:insetTop="0dp"
@@ -33,6 +34,7 @@
                 style="?attr/materialButtonOutlinedStyle"/>
 
             <Button
+                android:id="@+id/setting_five_minutes"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:insetTop="0dp"
@@ -41,6 +43,7 @@
                 style="?attr/materialButtonOutlinedStyle"/>
 
             <Button
+                android:id="@+id/setting_manual"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:insetTop="0dp"
