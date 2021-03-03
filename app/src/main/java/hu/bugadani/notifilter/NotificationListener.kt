@@ -22,7 +22,8 @@ class NotificationListener : NotificationListenerService() {
 
     companion object {
         const val TAG = "NotificationListener"
-        const val RELAX_TIME_MS = 1000 * 60
+        const val RELAX_ONE_MINUTE = 1000 * 60
+        const val RELAX_FIVE_MINUTES = 1000 * 60 * 5
     }
 
     private val receiver = UnlockReceiver(this)
@@ -37,7 +38,7 @@ class NotificationListener : NotificationListenerService() {
     private var enabled = false
     private var connected = false
     private var id = 0
-    var enabledFilters = HashSet<String>()
+    var enabledFilters = HashMap<String, FilterOption>()
 
     override fun onCreate() {
         super.onCreate()
@@ -65,15 +66,7 @@ class NotificationListener : NotificationListenerService() {
     }
 
     private fun updateFilter() {
-        val preferences = getSharedPreferences(
-            "appSettings",
-            Context.MODE_PRIVATE
-        )
-        val set = preferences.getStringSet("filter", HashSet())
-        if (set != null) {
-            enabledFilters.clear()
-            enabledFilters.addAll(set)
-        }
+        SettingsHelper.load(this, enabledFilters)
     }
 
     override fun onListenerConnected() {
@@ -139,9 +132,15 @@ class NotificationListener : NotificationListenerService() {
 
     private fun isRepost(sbn: StatusBarNotification): Boolean {
         val group = notificationGroup(sbn)
-        val expiration = proxied[group]
 
-        return expiration != null && expiration > System.currentTimeMillis()
+        val posted = proxied[group] ?: return false
+
+        return when(enabledFilters[sbn.packageName]) {
+            FilterOption.AutoReset1Minute -> posted > System.currentTimeMillis() - RELAX_ONE_MINUTE
+            FilterOption.AutoReset5Minutes -> posted > System.currentTimeMillis() - RELAX_FIVE_MINUTES
+            FilterOption.ManualReset -> true
+            else -> true // shouldn't be hit, but treat as a block
+        }
     }
 
     private fun shouldProxyForApp(sbn: StatusBarNotification): Boolean {
@@ -151,7 +150,7 @@ class NotificationListener : NotificationListenerService() {
     private fun proxyNotification(sbn: StatusBarNotification) {
         val group = notificationGroup(sbn)
 
-        proxied[group] = System.currentTimeMillis() + RELAX_TIME_MS
+        proxied[group] = System.currentTimeMillis()
 
         Log.d(
             TAG,

@@ -8,6 +8,7 @@ import android.view.View
 import android.widget.ProgressBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -18,7 +19,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var appListView: RecyclerView
     private lateinit var appsLoadingView: ProgressBar
-    private val enabledFilters = HashSet<String>()
+    private val enabledFilters =  HashMap<String, FilterOption>()
     private lateinit var viewModel: AppListViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +33,9 @@ class MainActivity : AppCompatActivity() {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = AppListItemAdapter(enabledFilters)
             setHasFixedSize(true)
+
+            val itemTouchHelper = ItemTouchHelper(AppListSwipeController())
+            itemTouchHelper.attachToRecyclerView(this)
         }
         appsLoadingView = findViewById(R.id.appsLoading)
     }
@@ -48,11 +52,7 @@ class MainActivity : AppCompatActivity() {
 
         super.onResume()
 
-        val preferences = getPreferences()
-        val set = preferences.getStringSet("filter", HashSet())
-        if (set != null) {
-            enabledFilters.addAll(set)
-        }
+        SettingsHelper.load(this, enabledFilters)
 
         viewModel.appListItems.observe(this, Observer { items ->
             (appListView.adapter as AppListItemAdapter).submitList(items)
@@ -62,11 +62,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         Log.d(TAG, "Saving preferences")
-        val preferences = getPreferences()
-        with(preferences.edit()) {
-            putStringSet("filter", enabledFilters)
-            apply()
-        }
+        SettingsHelper.save(this, enabledFilters)
 
         super.onPause()
     }
