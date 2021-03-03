@@ -1,4 +1,4 @@
-# NotiFilter
+# NotiFilter [![forthebadge](https://forthebadge.com/images/badges/uses-badges.svg)](https://forthebadge.com) [![forthebadge](https://forthebadge.com/images/badges/gluten-free.svg)](https://forthebadge.com) [![forthebadge](https://forthebadge.com/images/badges/powered-by-electricity.svg)](https://forthebadge.com)
 
 Do you have a smartwatch or a fitness tracker? You want to receive notifications but the constant buzzing annoys you? Then NotiFilter may be something that can help!
 NotiFilter is a simple Android app that assumes you only need a single notification per source. NotiFilter remembers which apps notified you so far and stops the same
