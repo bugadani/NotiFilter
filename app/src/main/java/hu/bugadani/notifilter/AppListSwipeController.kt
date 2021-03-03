@@ -8,6 +8,7 @@ import android.view.View
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import kotlin.math.min
+import kotlin.math.max
 
 /**
  * Based on (article) https://codeburst.io/android-swipe-menu-with-recyclerview-8f28a235ff28
@@ -84,7 +85,7 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
                 } else {
                     background.visibility = View.GONE
                 }
-                foreground.translationX = dX
+                foreground.translationX = max(dX, -viewHolder.backgroundButtons.width.toFloat())
                 foreground.translationY = dY
             }
         }
