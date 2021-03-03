@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButtonToggleGroup
 
-class AppListItemAdapter(private val enabledFilters: HashSet<String>) :
+class AppListItemAdapter(private val enabledFilters: HashMap<String, FilterOption>) :
     ListAdapter<AppListItem, AppListItemAdapter.ViewHolder>(Differ()) {
 
     /**
@@ -32,7 +32,12 @@ class AppListItemAdapter(private val enabledFilters: HashSet<String>) :
         val background: View = view.findViewById(R.id.background)
         val backgroundButtons: MaterialButtonToggleGroup =
             view.findViewById(R.id.background_buttons)
+        val backgroundButtons1Minute: View = backgroundButtons.findViewById(R.id.setting_one_minute)
+        val backgroundButtons5Minutes: View =
+            backgroundButtons.findViewById(R.id.setting_five_minutes)
+        val backgroundButtonsManual: View = backgroundButtons.findViewById(R.id.setting_manual)
         val foreground: View = view.findViewById(R.id.foreground)
+        var isChanging: Boolean = false
     }
 
     // Create new views (invoked by the layout manager)
@@ -52,34 +57,42 @@ class AppListItemAdapter(private val enabledFilters: HashSet<String>) :
         viewHolder.appEnabledView.tag = appInfo.packageName
         updateSwitch(viewHolder)
         viewHolder.appEnabledView.setOnCheckedChangeListener { view, isChecked ->
-            Log.d(
-                "MainActivity",
-                "App filter change: " + view.tag + " -> " + isChecked
-            )
-            updateSelection(viewHolder, isChecked)
-            updateButtons(viewHolder, isChecked)
+            if (!viewHolder.isChanging) {
+                viewHolder.isChanging = true
+                Log.d(
+                    "MainActivity",
+                    "App filter change: " + view.tag + " -> " + isChecked
+                )
+                updateSelection(viewHolder, isChecked, FilterOption.ManualReset)
+                updateButtons(viewHolder, isChecked)
+                viewHolder.isChanging = false
+            }
         }
         updateButtons(viewHolder, viewHolder.appEnabledView.isChecked)
 
         viewHolder.backgroundButtons.addOnButtonCheckedListener { group, checkedId, isChecked ->
-            when (checkedId) {
-                R.id.setting_one_minute -> {
-                    updateSelection(viewHolder, isChecked)
+            if (!viewHolder.isChanging) {
+                viewHolder.isChanging = true
+                try {
+                    val filter = when (checkedId) {
+                        viewHolder.backgroundButtons1Minute.id -> FilterOption.AutoReset1Minute
+                        viewHolder.backgroundButtons5Minutes.id -> FilterOption.AutoReset5Minutes
+                        viewHolder.backgroundButtonsManual.id -> FilterOption.ManualReset
+                        else -> throw IllegalStateException("Invalid id selected: $checkedId")
+                    }
+                    updateSelection(viewHolder, isChecked, filter)
+                    updateSwitch(viewHolder)
+                } catch (e: IllegalStateException) {
+                    Log.e("AppListItemAdapter", "Exception: $e")
                 }
-                R.id.setting_five_minutes -> {
-                    updateSelection(viewHolder, isChecked)
-                }
-                R.id.setting_manual -> {
-                    updateSelection(viewHolder, isChecked)
-                }
+                viewHolder.isChanging = false
             }
-            updateSwitch(viewHolder)
         }
     }
 
-    private fun updateSelection(viewHolder: ViewHolder, isChecked: Boolean) {
+    private fun updateSelection(viewHolder: ViewHolder, isChecked: Boolean, kind: FilterOption) {
         if (isChecked) {
-            enabledFilters.add(viewHolder.appEnabledView.tag as String)
+            enabledFilters[viewHolder.appEnabledView.tag as String] = kind
         } else {
             enabledFilters.remove(viewHolder.appEnabledView.tag as String)
         }
@@ -91,7 +104,11 @@ class AppListItemAdapter(private val enabledFilters: HashSet<String>) :
 
     private fun updateButtons(viewHolder: ViewHolder, isChecked: Boolean) {
         if (isChecked) {
-            viewHolder.backgroundButtons.check(R.id.setting_manual)
+            when (enabledFilters[viewHolder.appEnabledView.tag]) {
+                FilterOption.AutoReset1Minute -> viewHolder.backgroundButtons.check(viewHolder.backgroundButtons1Minute.id)
+                FilterOption.AutoReset5Minutes -> viewHolder.backgroundButtons.check(viewHolder.backgroundButtons5Minutes.id)
+                FilterOption.ManualReset -> viewHolder.backgroundButtons.check(viewHolder.backgroundButtonsManual.id)
+            }
         } else {
             viewHolder.backgroundButtons.clearChecked()
         }

@@ -37,7 +37,7 @@ class NotificationListener : NotificationListenerService() {
     private var enabled = false
     private var connected = false
     private var id = 0
-    var enabledFilters = HashSet<String>()
+    var enabledFilters = HashMap<String, FilterOption>()
 
     override fun onCreate() {
         super.onCreate()
@@ -65,15 +65,7 @@ class NotificationListener : NotificationListenerService() {
     }
 
     private fun updateFilter() {
-        val preferences = getSharedPreferences(
-            "appSettings",
-            Context.MODE_PRIVATE
-        )
-        val set = preferences.getStringSet("filter", HashSet())
-        if (set != null) {
-            enabledFilters.clear()
-            enabledFilters.addAll(set)
-        }
+        SettingsHelper.load(this, enabledFilters)
     }
 
     override fun onListenerConnected() {
