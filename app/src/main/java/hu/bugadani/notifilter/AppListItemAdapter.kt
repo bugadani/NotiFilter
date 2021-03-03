@@ -55,7 +55,7 @@ class AppListItemAdapter(private val enabledFilters: HashMap<String, FilterOptio
         viewHolder.appNameView.text = appInfo.appName
         viewHolder.appIconView.setImageDrawable(appInfo.icon)
         viewHolder.appEnabledView.tag = appInfo.packageName
-        updateSwitch(viewHolder)
+
         viewHolder.appEnabledView.setOnCheckedChangeListener { view, isChecked ->
             if (!viewHolder.isChanging) {
                 viewHolder.isChanging = true
@@ -68,7 +68,6 @@ class AppListItemAdapter(private val enabledFilters: HashMap<String, FilterOptio
                 viewHolder.isChanging = false
             }
         }
-        updateButtons(viewHolder, viewHolder.appEnabledView.isChecked)
 
         viewHolder.backgroundButtons.addOnButtonCheckedListener { group, checkedId, isChecked ->
             if (!viewHolder.isChanging) {
@@ -88,6 +87,11 @@ class AppListItemAdapter(private val enabledFilters: HashMap<String, FilterOptio
                 viewHolder.isChanging = false
             }
         }
+
+        viewHolder.isChanging = true
+        updateSwitch(viewHolder)
+        updateButtons(viewHolder, viewHolder.appEnabledView.isChecked)
+        viewHolder.isChanging = false
     }
 
     private fun updateSelection(viewHolder: ViewHolder, isChecked: Boolean, kind: FilterOption) {
