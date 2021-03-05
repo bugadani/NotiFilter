@@ -16,11 +16,11 @@ import kotlin.math.max
  */
 class AppListSwipeController : ItemTouchHelper.Callback() {
     internal enum class MenuState {
-        GONE, VISIBLE
+        CLOSED, OPEN
     }
 
     private var swipeBack: Boolean = true
-    private var menuState: MenuState = MenuState.GONE
+    private var menuState: MenuState = MenuState.CLOSED
 
     override fun getMovementFlags(
         recyclerView: RecyclerView,
@@ -43,7 +43,7 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
 
     override fun convertToAbsoluteDirection(flags: Int, layoutDirection: Int): Int {
         if (swipeBack) {
-            swipeBack = menuState != MenuState.GONE
+            swipeBack = menuState != MenuState.CLOSED
             return 0
         }
         return super.convertToAbsoluteDirection(flags, layoutDirection)
@@ -59,35 +59,32 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
         isCurrentlyActive: Boolean
     ) {
         if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE) {
-            with(viewHolder as AppListItemAdapter.ViewHolder) {
-                if (menuState != MenuState.GONE) {
-                    foreground.translationX = min(dX, -viewHolder.backgroundButtons.width.toFloat())
-                    foreground.translationY = dY
-                } else {
-                    // FIXME: no need to set this on every frame
-                    setTouchListener(
-                        c,
-                        recyclerView,
-                        viewHolder,
-                        dX,
-                        dY,
-                        actionState,
-                        isCurrentlyActive
-                    )
-                }
+            if (menuState == MenuState.CLOSED) {
+                setTouchListener(
+                    c,
+                    recyclerView,
+                    viewHolder as AppListItemAdapter.ViewHolder,
+                    dX,
+                    dY,
+                    actionState,
+                    isCurrentlyActive
+                )
             }
         }
 
-        if (menuState == MenuState.GONE) {
-            with(viewHolder as AppListItemAdapter.ViewHolder) {
+        with(viewHolder as AppListItemAdapter.ViewHolder) {
+            val clamped_dX = max(dX, -viewHolder.backgroundButtons.width.toFloat())
+            if (menuState == MenuState.CLOSED) {
                 if (dX != 0f) {
                     background.visibility = View.VISIBLE
                 } else {
                     background.visibility = View.GONE
                 }
-                foreground.translationX = max(dX, -viewHolder.backgroundButtons.width.toFloat())
-                foreground.translationY = dY
+                foreground.translationX = clamped_dX
+            } else {
+                foreground.translationX = min(clamped_dX, -viewHolder.backgroundButtons.width.toFloat())
             }
+            foreground.translationY = dY
         }
     }
 
@@ -100,16 +97,15 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
         actionState: Int,
         isCurrentlyActive: Boolean
     ) {
-        recyclerView.setOnTouchListener { v, event ->
-            Log.d("SwipeController", "OnTouch")
+        recyclerView.setOnTouchListener { _, event ->
             swipeBack =
                 event.action == MotionEvent.ACTION_CANCEL || event.action == MotionEvent.ACTION_UP
 
             if (swipeBack) {
                 if (dX.toInt() < -viewHolder.backgroundButtons.width) {
-                    menuState = MenuState.VISIBLE
+                    menuState = MenuState.OPEN
                 }
-                if (menuState != MenuState.GONE) {
+                if (menuState != MenuState.CLOSED) {
                     setTouchDownListener(
                         c,
                         recyclerView,
@@ -134,13 +130,12 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
         dX: Float, dY: Float,
         actionState: Int, isCurrentlyActive: Boolean
     ) {
-        recyclerView.setOnTouchListener { v, event ->
+        recyclerView.setOnTouchListener { _, event ->
             if (event.action == MotionEvent.ACTION_DOWN) {
-                Log.d("SwipeController", "TouchDown")
-                recyclerView.setOnTouchListener { v, event -> false }
+                recyclerView.setOnTouchListener { _, _ -> false }
                 swipeBack = false
-                menuState = MenuState.GONE
-                // FIXME: it would be nice if this animated
+                menuState = MenuState.CLOSED
+
                 this@AppListSwipeController.onChildDraw(
                     c,
                     recyclerView,
