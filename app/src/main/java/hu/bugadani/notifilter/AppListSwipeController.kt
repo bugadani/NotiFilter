@@ -2,10 +2,8 @@ package hu.bugadani.notifilter
 
 import android.annotation.SuppressLint
 import android.graphics.Canvas
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
-import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import kotlin.math.min
 import kotlin.math.max
@@ -26,15 +24,7 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
         recyclerView: RecyclerView,
         viewHolder: RecyclerView.ViewHolder
     ): Int {
-        return makeMovementFlags(0, ItemTouchHelper.LEFT)
-    }
-
-    override fun onMove(
-        recyclerView: RecyclerView,
-        viewHolder: RecyclerView.ViewHolder,
-        target: RecyclerView.ViewHolder
-    ): Boolean {
-        return false
+        return makeMovementFlags(ItemTouchHelper.LEFT)
     }
 
     override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
