@@ -3,6 +3,7 @@ package hu.bugadani.notifilter
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import androidx.activity.viewModels
 import android.widget.ProgressBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
@@ -16,15 +17,13 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var appListView: RecyclerView
     private lateinit var appsLoadingView: ProgressBar
-    private val enabledFilters =  HashMap<String, FilterOption>()
-    private lateinit var viewModel: AppListViewModel
+    private val enabledFilters = HashMap<String, FilterOption>()
+    private val viewModel: AppListViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_main)
-
-        viewModel = AppListViewModel(packageManager)
 
         appListView = findViewById<RecyclerView>(R.id.appList).apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
