@@ -11,6 +11,7 @@ import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.*
 import java.util.*
+import kotlin.math.abs
 import kotlin.math.sign
 
 /**
@@ -164,14 +165,16 @@ class ItemTouchHelper
                 if (mSelected == null) {
                     val animation = findAnimation(event)
                     if (animation != null) {
-                        mInitialTouchX -= animation.mX
-                        mInitialTouchY -= animation.mY
-                        endRecoverAnimation(animation.mViewHolder, true)
-                        if (mPendingCleanup.remove(animation.mViewHolder.itemView)) {
-                            mCallback.clearView(mRecyclerView!!, animation.mViewHolder)
+                        if (mCallback.hitTest(recyclerView, animation.mViewHolder, event.x, event.y)) {
+                            mInitialTouchX -= animation.mX
+                            mInitialTouchY -= animation.mY
+                            endRecoverAnimation(animation.mViewHolder, true)
+                            if (mPendingCleanup.remove(mCallback.itemView(animation.mViewHolder))) {
+                                mCallback.clearView(mRecyclerView!!, animation.mViewHolder)
+                            }
+                            select(animation.mViewHolder, animation.mActionState)
+                            updateDxDy(event, mSelectedFlags, 0)
                         }
-                        select(animation.mViewHolder, animation.mActionState)
-                        updateDxDy(event, mSelectedFlags, 0)
                     }
                 }
             } else if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_UP) {
@@ -314,15 +317,17 @@ class ItemTouchHelper
     }
 
     private fun getSelectedDxDy(outPosition: FloatArray) {
+        val itemView = mCallback.itemView(mSelected!!)
+
         if (mSelectedFlags and (LEFT or RIGHT) != 0) {
-            outPosition[0] = mSelectedStartX + mDx - mSelected!!.itemView.left
+            outPosition[0] = mSelectedStartX + mDx - itemView.left
         } else {
-            outPosition[0] = mSelected!!.itemView.translationX
+            outPosition[0] = itemView.translationX
         }
         if (mSelectedFlags and (UP or DOWN) != 0) {
-            outPosition[1] = mSelectedStartY + mDy - mSelected!!.itemView.top
+            outPosition[1] = mSelectedStartY + mDy - itemView.top
         } else {
-            outPosition[1] = mSelected!!.itemView.translationY
+            outPosition[1] = itemView.translationY
         }
     }
 
@@ -423,7 +428,8 @@ class ItemTouchHelper
                 startRecoverAnimation(
                     prevSelected,
                     prevActionState, currentTranslateX, currentTranslateY,
-                    targetTranslateX, targetTranslateY, swipeDir, animationType)
+                    targetTranslateX, targetTranslateY, swipeDir, animationType
+                )
                 preventLayout = true
             } else {
                 removeChildDrawingOrderCallbackIfNecessary(prevSelected.itemView)
@@ -439,7 +445,7 @@ class ItemTouchHelper
             mSelectedStartY = selected.itemView.top.toFloat()
             mSelected = selected
             if (actionState == ACTION_STATE_DRAG) {
-                mSelected!!.itemView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                mCallback.itemView(mSelected!!).performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             }
         }
         val rvParent = mRecyclerView!!.parent
@@ -462,7 +468,7 @@ class ItemTouchHelper
         animationType: Int
     ) {
         val rv = object : RecoverAnimation(
-            viewHolder,
+            mCallback, viewHolder,
             actionState, currentTranslateX, currentTranslateY,
             targetTranslateX, targetTranslateY
         ) {
@@ -596,8 +602,8 @@ class ItemTouchHelper
         val pointerIndex = motionEvent.findPointerIndex(mActivePointerId)
         val dx = motionEvent.getX(pointerIndex) - mInitialTouchX
         val dy = motionEvent.getY(pointerIndex) - mInitialTouchY
-        val absDx = Math.abs(dx)
-        val absDy = Math.abs(dy)
+        val absDx = abs(dx)
+        val absDy = abs(dy)
         if (absDx < mSlop && absDy < mSlop) {
             return null
         }
@@ -643,8 +649,8 @@ class ItemTouchHelper
         val dy = y - mInitialTouchY
         // swipe target is chose w/o applying flags so it does not really check if swiping in that
         // direction is allowed. This why here, we use mDx mDy to check slope value again.
-        val absDx = Math.abs(dx)
-        val absDy = Math.abs(dy)
+        val absDx = abs(dx)
+        val absDy = abs(dy)
         if (absDx < mSlop && absDy < mSlop) {
             return
         }
@@ -664,8 +670,7 @@ class ItemTouchHelper
             }
         }
         mDy = 0f
-        mInitialTouchX -= mCallback.initialDx(vh)
-        mDx = mCallback.initialDx(vh)
+        mDx = mDy
         mActivePointerId = motionEvent.getPointerId(0)
         select(vh, ACTION_STATE_SWIPE)
     }
@@ -675,7 +680,7 @@ class ItemTouchHelper
         val x = event.x
         val y = event.y
         if (mSelected != null) {
-            val selectedView = mSelected!!.itemView
+            val selectedView = mCallback.itemView(mSelected!!)
             if (hitTest(
                     selectedView,
                     x,
@@ -689,7 +694,7 @@ class ItemTouchHelper
         }
         for (i in mRecoverAnimations.indices.reversed()) {
             val anim = mRecoverAnimations[i]
-            val view = anim.mViewHolder.itemView
+            val view = mCallback.itemView(anim.mViewHolder)
             if (hitTest(view, x, y, anim.mX, anim.mY)) {
                 return view
             }
@@ -705,10 +710,10 @@ class ItemTouchHelper
         return findAnimationForView(target)
     }
 
-    fun findAnimationForView(view: View?) : RecoverAnimation? {
+    fun findAnimationForView(view: View?): RecoverAnimation? {
         for (i in mRecoverAnimations.indices.reversed()) {
             val anim = mRecoverAnimations[i]
-            if (anim.mViewHolder.itemView === view) {
+            if (mCallback.itemView(anim.mViewHolder) === view) {
                 return anim
             }
         }
@@ -753,7 +758,7 @@ class ItemTouchHelper
         val originalFlags = (originalMovementFlags
                 and ACTION_MODE_SWIPE_MASK) shr ACTION_STATE_SWIPE * DIRECTION_FLAG_COUNT
         var swipeDir: Int
-        if (Math.abs(mDx) > Math.abs(mDy)) {
+        if (abs(mDx) > abs(mDy)) {
             if (checkHorizontalSwipe(viewHolder, flags).also { swipeDir = it } > 0) {
                 // if swipe dir is not in original flags, it should be the relative direction
                 return if (originalFlags and swipeDir == 0) {
@@ -796,18 +801,17 @@ class ItemTouchHelper
                 )
                 val xVelocity = mVelocityTracker!!.getXVelocity(mActivePointerId)
                 val yVelocity = mVelocityTracker!!.getYVelocity(mActivePointerId)
-                val velDirFlag: Int =
-                    if (xVelocity > 0f) RIGHT else LEFT
-                val absXVelocity = Math.abs(xVelocity)
+                val velDirFlag: Int = if (xVelocity > 0f) RIGHT else LEFT
+                val absXVelocity = abs(xVelocity)
                 if (velDirFlag and flags != 0 && dirFlag == velDirFlag && absXVelocity >= mCallback.getSwipeEscapeVelocity(
                         mSwipeEscapeVelocity
-                    ) && absXVelocity > Math.abs(yVelocity)
+                    ) && absXVelocity > abs(yVelocity)
                 ) {
                     return velDirFlag
                 }
             }
             val threshold = mRecyclerView!!.width * mCallback.getSwipeThreshold(viewHolder)
-            if (flags and dirFlag != 0 && Math.abs(mDx) > threshold) {
+            if (flags and dirFlag != 0 && abs(mDx) > threshold) {
                 return dirFlag
             }
         }
@@ -825,19 +829,18 @@ class ItemTouchHelper
                 )
                 val xVelocity = mVelocityTracker!!.getXVelocity(mActivePointerId)
                 val yVelocity = mVelocityTracker!!.getYVelocity(mActivePointerId)
-                val velDirFlag: Int =
-                    if (yVelocity > 0f) DOWN else UP
-                val absYVelocity = Math.abs(yVelocity)
+                val velDirFlag: Int = if (yVelocity > 0f) DOWN else UP
+                val absYVelocity = abs(yVelocity)
                 if (velDirFlag and flags != 0 && velDirFlag == dirFlag && absYVelocity >= mCallback.getSwipeEscapeVelocity(
                         mSwipeEscapeVelocity
-                    ) && absYVelocity > Math.abs(xVelocity)
+                    ) && absYVelocity > abs(xVelocity)
                 ) {
                     return velDirFlag
                 }
             }
             val threshold = mRecyclerView!!.height * mCallback
                 .getSwipeThreshold(viewHolder)
-            if (flags and dirFlag != 0 && Math.abs(mDy) > threshold) {
+            if (flags and dirFlag != 0 && abs(mDy) > threshold) {
                 return dirFlag
             }
         }
@@ -893,7 +896,22 @@ class ItemTouchHelper
                 running.mOverridden = true
             }
 
-            mOwner.startRecoverAnimation(viewHolder, ACTION_STATE_SWIPE, initial, 0f, 0f, 0f, LEFT, ANIMATION_TYPE_SWIPE_CANCEL)
+            mOwner.startRecoverAnimation(
+                viewHolder,
+                ACTION_STATE_SWIPE,
+                initial,
+                0f,
+                0f,
+                0f,
+                LEFT,
+                ANIMATION_TYPE_SWIPE_CANCEL
+            )
+        }
+
+        abstract fun hitTest(parent: View, child: ViewHolder, x: Float, y: Float): Boolean
+
+        open fun itemView(child: ViewHolder): View {
+            return child.itemView
         }
 
         /**
@@ -949,7 +967,8 @@ class ItemTouchHelper
 
             if (layoutDirection == ViewCompat.LAYOUT_DIRECTION_LTR) {
                 // no change. just OR with 2 bits shifted mask and return
-                flags = flags or (masked shr 2) // START is 2 bits after LEFT, END is 2 bits after RIGHT.
+                flags =
+                    flags or (masked shr 2) // START is 2 bits after LEFT, END is 2 bits after RIGHT.
             } else {
                 // add START flag as RIGHT
                 flags = flags or (masked shr 1 and RELATIVE_DIR_FLAGS.inv())
@@ -1173,10 +1192,6 @@ class ItemTouchHelper
 
         }
 
-        open fun initialDx(viewHolder: RecyclerView.ViewHolder) : Float {
-            return 0f
-        }
-
         /**
          * Called by ItemTouchHelper on RecyclerView's onDraw callback.
          *
@@ -1365,6 +1380,7 @@ class ItemTouchHelper
     }
 
     open class RecoverAnimation(
+        val mCallback: Callback,
         val mViewHolder: ViewHolder,
         val mActionState: Int,
         val mStartDx: Float,
@@ -1386,7 +1402,7 @@ class ItemTouchHelper
 
         init {
             mValueAnimator.addUpdateListener { animation -> setFraction(animation.animatedFraction) }
-            mValueAnimator.setTarget(mViewHolder.itemView)
+            mValueAnimator.setTarget(mCallback.itemView(mViewHolder))
             mValueAnimator.addListener(this)
             setFraction(0f)
         }
@@ -1414,12 +1430,12 @@ class ItemTouchHelper
          */
         fun update() {
             mX = if (mStartDx == mTargetX) {
-                mViewHolder.itemView.translationX
+                mCallback.itemView(mViewHolder).translationX
             } else {
                 mStartDx + mFraction * (mTargetX - mStartDx)
             }
             mY = if (mStartDy == mTargetY) {
-                mViewHolder.itemView.translationY
+                mCallback.itemView(mViewHolder).translationY
             } else {
                 mStartDy + mFraction * (mTargetY - mStartDy)
             }

@@ -25,12 +25,6 @@ class AppListSwipeController() : ItemTouchHelper.Callback() {
 
     }
 
-    override fun initialDx(viewHolder: RecyclerView.ViewHolder) : Float {
-        viewHolder as AppListItemAdapter.ViewHolder
-        Log.d("SwipeController", "Initial dX: ${viewHolder.lastDx}")
-        return viewHolder.lastDx
-    }
-
     override fun onChildDraw(
         c: Canvas,
         recyclerView: RecyclerView,
@@ -63,7 +57,7 @@ class AppListSwipeController() : ItemTouchHelper.Callback() {
             } else {
                 View.GONE
             }
-            viewHolder.foreground.translationX = dX
+            viewHolder.foreground.translationX = clamped_dX
         } else {
             viewHolder.foreground.translationX = -viewHolder.backgroundButtons.width.toFloat()
         }
@@ -122,10 +116,12 @@ class AppListSwipeController() : ItemTouchHelper.Callback() {
             if (event.action == MotionEvent.ACTION_DOWN) {
                 canReRegister = true
 
-                if (hitTest(recyclerView, viewHolder.foreground, event.x, event.y)) {
+                if (hitTest(recyclerView, viewHolder, event.x, event.y)) {
                     Log.d("SwipeController", "Open menu touched")
-                    setTouchListener(c, recyclerView, viewHolder,
-                        -viewHolder.backgroundButtons.width.toFloat(), dY, actionState, false)
+                    setTouchListener(
+                        c, recyclerView, viewHolder,
+                        -viewHolder.backgroundButtons.width.toFloat(), dY, actionState, false
+                    )
                 } else {
                     Log.d("SwipeController", "List touched")
 
@@ -143,7 +139,14 @@ class AppListSwipeController() : ItemTouchHelper.Callback() {
         }
     }
 
-    private fun hitTest(parent: View, child: View, x: Float, y: Float): Boolean {
+    override fun hitTest(
+        parent: View,
+        child: RecyclerView.ViewHolder,
+        x: Float,
+        y: Float
+    ): Boolean {
+        val child = (child as AppListItemAdapter.ViewHolder).foreground
+
         val loc = IntArray(2)
         val ploc = IntArray(2)
         parent.getLocationInWindow(ploc)
@@ -151,5 +154,9 @@ class AppListSwipeController() : ItemTouchHelper.Callback() {
         val left = loc[0] - ploc[0]
         val top = loc[1] - ploc[1]
         return x >= left && x <= left + child.width && y >= top && y <= top + child.height
+    }
+
+    override fun itemView(child: RecyclerView.ViewHolder): View {
+        return (child as AppListItemAdapter.ViewHolder).foreground
     }
 }
