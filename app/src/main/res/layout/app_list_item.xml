@@ -7,49 +7,63 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/background"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="4dp"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent">
-            <com.google.android.material.button.MaterialButtonToggleGroup
-                android:id="@+id/background_buttons"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                app:singleSelection="true"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent">
+        app:layout_constraintTop_toTopOf="parent">
+
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/background_buttons"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="2dp"
+            android:orientation="horizontal"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/setting_app_as_one_group"
+            app:layout_constraintTop_toTopOf="parent"
+            app:singleSelection="true">
+
             <Button
                 android:id="@+id/setting_one_minute"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:text="@string/one_minute"
-                style="?attr/materialButtonOutlinedStyle"/>
+                android:text="@string/one_minute" />
 
             <Button
                 android:id="@+id/setting_five_minutes"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:text="@string/five_minute"
-                style="?attr/materialButtonOutlinedStyle"/>
+                android:text="@string/five_minute" />
 
             <Button
                 android:id="@+id/setting_manual"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:text="@string/manual"
-                style="?attr/materialButtonOutlinedStyle"/>
-            </com.google.android.material.button.MaterialButtonToggleGroup>
+                android:text="@string/manual" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
+        <Button
+            android:id="@+id/setting_app_as_one_group"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:text="@string/app_as_one_group"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -58,10 +72,10 @@
         android:layout_height="wrap_content"
         android:layout_margin="4dp"
         android:background="@color/black"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
         <TextView
             android:id="@+id/appName"

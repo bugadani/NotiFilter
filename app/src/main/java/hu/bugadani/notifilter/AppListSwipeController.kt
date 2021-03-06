@@ -44,7 +44,7 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
         isCurrentlyActive: Boolean
     ) {
         viewHolder as AppListItemAdapter.ViewHolder
-        val clamped_dX = dX.coerceIn(-viewHolder.backgroundButtons.width.toFloat(), 0f)
+        val clamped_dX = dX.coerceIn(-viewHolder.background.width.toFloat(), 0f)
 
         if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE) {
             if (canReRegister) {
@@ -63,7 +63,7 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
         viewHolder.foreground.translationX = if (!viewHolder.menuOpen || isCurrentlyActive) {
             clamped_dX
         } else {
-            -viewHolder.backgroundButtons.width.toFloat()
+            -viewHolder.background.width.toFloat()
         }
         viewHolder.foreground.translationY = dY
     }
@@ -83,7 +83,7 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
 
             if (swipeBack) {
                 Log.d("SwipeController", "end: $dX")
-                if (dX.toInt() <= -viewHolder.backgroundButtons.width) {
+                if (dX.toInt() <= -viewHolder.background.width) {
                     viewHolder.menuOpen = true
                     canReRegister = false
                     registerHider(recyclerView, viewHolder)
@@ -111,7 +111,7 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
 
                     startRecoveryAnimation(
                         viewHolder,
-                        -viewHolder.backgroundButtons.width.toFloat()
+                        -viewHolder.background.width.toFloat()
                     )
                 }
 

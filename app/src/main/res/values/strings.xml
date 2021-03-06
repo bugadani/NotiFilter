@@ -10,4 +10,5 @@
     <string name="five_minute">5\'</string>
     <string name="one_minute">1\'</string>
     <string name="manual">✓</string>
+    <string name="app_as_one_group">A</string>
 </resources>

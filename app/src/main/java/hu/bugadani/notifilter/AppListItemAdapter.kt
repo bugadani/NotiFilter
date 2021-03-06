@@ -30,6 +30,7 @@ class AppListItemAdapter(private val enabledFilters: HashMap<String, FilterOptio
             backgroundButtons.findViewById(R.id.setting_five_minutes)
         val backgroundButtonsManual: View = backgroundButtons.findViewById(R.id.setting_manual)
         val foreground: View = view.findViewById(R.id.foreground)
+        val background: View = view.findViewById(R.id.background)
         var isChanging: Boolean = false
         var menuOpen: Boolean = false
     }
