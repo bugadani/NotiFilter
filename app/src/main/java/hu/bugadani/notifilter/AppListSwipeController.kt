@@ -110,8 +110,6 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
     ) {
         recyclerView.setOnTouchListener { _, event ->
             if (event.action == MotionEvent.ACTION_DOWN) {
-                canReRegister = true
-
                 if (hitTest(recyclerView, viewHolder, event.x, event.y)) {
                     Log.d("SwipeController", "Open menu touched")
                     setTouchListener(
@@ -130,6 +128,8 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
                         -viewHolder.backgroundButtons.width.toFloat()
                     )
                 }
+
+                canReRegister = true
             }
             false
         }

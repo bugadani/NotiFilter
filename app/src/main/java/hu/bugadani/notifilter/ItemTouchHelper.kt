@@ -367,8 +367,7 @@ class ItemTouchHelper
         }
         mDragScrollStartTimeInMs = Long.MIN_VALUE
         val prevActionState = mActionState
-        // prevent duplicate animations
-        endRecoverAnimation(selected, true)
+
         mActionState = actionState
 
         val actionStateMask =
@@ -397,18 +396,14 @@ class ItemTouchHelper
                         targetTranslateY = 0f
                     }
                 }
-                val animationType = if (swipeDir > 0) {
-                        ANIMATION_TYPE_SWIPE_SUCCESS
-                    } else {
-                        ANIMATION_TYPE_SWIPE_CANCEL
-                    }
+
                 val xy = getSelectedDxDy()
                 val currentTranslateX = xy.first
                 val currentTranslateY = xy.second
                 startRecoverAnimation(
                     prevSelected,
                     prevActionState, currentTranslateX, currentTranslateY,
-                    targetTranslateX, targetTranslateY, swipeDir, animationType
+                    targetTranslateX, targetTranslateY, swipeDir
                 )
                 preventLayout = true
             } else {
@@ -442,9 +437,10 @@ class ItemTouchHelper
         currentTranslateY: Float,
         targetTranslateX: Float,
         targetTranslateY: Float,
-        swipeDir: Int,
-        animationType: Int
+        swipeDir: Int
     ) {
+        endRecoverAnimation(viewHolder, true)
+
         val rv = object : RecoverAnimation(
             mCallback, viewHolder,
             actionState, currentTranslateX, currentTranslateY,
@@ -475,11 +471,7 @@ class ItemTouchHelper
                 }
             }
         }
-        val duration = mCallback.getAnimationDuration(
-            mRecyclerView!!, animationType,
-            targetTranslateX - currentTranslateX, targetTranslateY - currentTranslateY
-        )
-        rv.setDuration(duration)
+        rv.setDuration(Callback.DEFAULT_SWIPE_ANIMATION_DURATION)
         mRecoverAnimations.add(rv)
         rv.start()
     }
@@ -859,8 +851,6 @@ class ItemTouchHelper
         private lateinit var mOwner: ItemTouchHelper
 
         protected fun startRecoveryAnimation(viewHolder: ViewHolder, initial: Float) {
-            mOwner.endRecoverAnimation(viewHolder, true)
-
             mOwner.startRecoverAnimation(
                 viewHolder,
                 ACTION_STATE_SWIPE,
@@ -868,8 +858,7 @@ class ItemTouchHelper
                 0f,
                 0f,
                 0f,
-                LEFT,
-                ANIMATION_TYPE_SWIPE_CANCEL
+                LEFT
             )
         }
 
@@ -1231,45 +1220,11 @@ class ItemTouchHelper
 
         }
 
-        /**
-         * Called by the ItemTouchHelper when user action finished on a ViewHolder and now the View
-         * will be animated to its final position.
-         *
-         *
-         * Default implementation uses ItemAnimator's duration values. If
-         * `animationType` is [.ANIMATION_TYPE_DRAG], it returns
-         * [RecyclerView.ItemAnimator.getMoveDuration], otherwise, it returns
-         * [RecyclerView.ItemAnimator.getRemoveDuration]. If RecyclerView does not have
-         * any [RecyclerView.ItemAnimator] attached, this method returns
-         * `DEFAULT_DRAG_ANIMATION_DURATION` or `DEFAULT_SWIPE_ANIMATION_DURATION`
-         * depending on the animation type.
-         *
-         * @param recyclerView  The RecyclerView to which the ItemTouchHelper is attached to.
-         * @param animationType The type of animation. Is one of [.ANIMATION_TYPE_DRAG],
-         * [.ANIMATION_TYPE_SWIPE_CANCEL] or
-         * [.ANIMATION_TYPE_SWIPE_SUCCESS].
-         * @param animateDx     The horizontal distance that the animation will offset
-         * @param animateDy     The vertical distance that the animation will offset
-         * @return The duration for the animation
-         */
-        fun getAnimationDuration(
-            recyclerView: RecyclerView, animationType: Int,
-            animateDx: Float, animateDy: Float
-        ): Long {
-            val itemAnimator = recyclerView.itemAnimator
-            return if (itemAnimator == null) {
-                if (animationType == ANIMATION_TYPE_DRAG) DEFAULT_DRAG_ANIMATION_DURATION else DEFAULT_SWIPE_ANIMATION_DURATION
-            } else {
-                if (animationType == ANIMATION_TYPE_DRAG) itemAnimator.moveDuration else itemAnimator.removeDuration
-            }
-        }
-
         fun setup(owner: ItemTouchHelper) {
             mOwner = owner
         }
 
         companion object {
-            const val DEFAULT_DRAG_ANIMATION_DURATION: Long = 200
             const val DEFAULT_SWIPE_ANIMATION_DURATION: Long = 250
             const val RELATIVE_DIR_FLAGS: Int =
                 (START or END
@@ -1398,13 +1353,15 @@ class ItemTouchHelper
          * This way, we can sync translate x/y values w/ the animators to avoid one-off frames.
          */
         fun update() {
+            val itemView = mCallback.itemView(mViewHolder)
+
             mX = if (mStartDx == mTargetX) {
-                mCallback.itemView(mViewHolder).translationX
+                itemView.translationX
             } else {
                 mStartDx + mFraction * (mTargetX - mStartDx)
             }
             mY = if (mStartDy == mTargetY) {
-                mCallback.itemView(mViewHolder).translationY
+                itemView.translationY
             } else {
                 mStartDy + mFraction * (mTargetY - mStartDy)
             }
