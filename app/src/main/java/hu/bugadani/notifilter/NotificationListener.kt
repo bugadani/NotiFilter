@@ -20,6 +20,12 @@ class NotificationListener : NotificationListenerService() {
         }
     }
 
+    data class ProxiedNotificationData(
+        val group: NotificationGroup,
+        val key: String,
+        val flags: Int
+    )
+
     companion object {
         const val TAG = "NotificationListener"
         const val RELAX_ONE_MINUTE = 1000 * 60
@@ -28,6 +34,8 @@ class NotificationListener : NotificationListenerService() {
 
     private val receiver = UnlockReceiver(this)
     private var proxied: HashMap<NotificationGroup, Long> = HashMap()
+    private var proxiedNotifications: HashMap<Int, ProxiedNotificationData> = HashMap()
+
     private val channel = NotificationChannel(
         "P",
         "Proxied Notifications",
@@ -85,6 +93,8 @@ class NotificationListener : NotificationListenerService() {
         Log.d(TAG, "onStartCommand")
 
         proxied.clear()
+        proxiedNotifications.clear()
+
         updateFilter()
 
         return super.onStartCommand(intent, flags, startId)
@@ -123,11 +133,28 @@ class NotificationListener : NotificationListenerService() {
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
-        Log.d(
-            TAG,
-            "Notification removed: ${sbn.notification}"
-        )
         super.onNotificationRemoved(sbn)
+
+        Log.d(TAG, "Notification removed: ${sbn.id} - ${sbn.notification}")
+
+        if (!connected || !enabled) {
+            Log.d(TAG, "Notification removal ignored: service disabled")
+            return
+        }
+
+        val notificationData = proxiedNotifications.remove(sbn.id)
+        if (notificationData == null) {
+            Log.d(TAG, "Notification removal ignored: notification not proxied")
+            return
+        }
+
+        // We only hit this line if our notification is the removed one
+        // (i.e. not the source or an untracked one).
+        proxied.remove(notificationData.group)
+
+        if (notificationData.flags.and(Notification.FLAG_AUTO_CANCEL) != 0) {
+            cancelNotification(notificationData.key)
+        }
     }
 
     private fun isRepost(sbn: StatusBarNotification): Boolean {
@@ -135,7 +162,7 @@ class NotificationListener : NotificationListenerService() {
 
         val posted = proxied[group] ?: return false
 
-        return when(enabledFilters[sbn.packageName]) {
+        return when (enabledFilters[sbn.packageName]) {
             FilterOption.AutoReset1Minute -> posted > System.currentTimeMillis() - RELAX_ONE_MINUTE
             FilterOption.AutoReset5Minutes -> posted > System.currentTimeMillis() - RELAX_FIVE_MINUTES
             FilterOption.ManualReset -> true
@@ -154,7 +181,7 @@ class NotificationListener : NotificationListenerService() {
 
         Log.d(
             TAG,
-            "Proxying notification: " + sbn.notification.tickerText
+            "Proxying notification: ${sbn.id} - ${sbn.notification.tickerText}"
         )
         Log.d(TAG, "Group: $group")
         Log.d(TAG, "Category: ${sbn.notification.category}")
@@ -174,8 +201,10 @@ class NotificationListener : NotificationListenerService() {
 
             val notificationManager =
                 getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.notify(id, notification)
-            id += 1
+            notificationManager.notify(proxiedNotifications.size, notification)
+
+            proxiedNotifications[id] =
+                ProxiedNotificationData(group, sbn.key, sbn.notification.flags)
         } catch (e: IllegalArgumentException) {
             Log.e(TAG, "Exception: $e")
         }
@@ -189,6 +218,11 @@ class NotificationListener : NotificationListenerService() {
         if (connected) {
             val notificationManager =
                 getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
+
+            proxied.clear()
+            proxiedNotifications.clear()
+
+            // This should only clear our notifications
             notificationManager.cancelAll()
         }
     }
