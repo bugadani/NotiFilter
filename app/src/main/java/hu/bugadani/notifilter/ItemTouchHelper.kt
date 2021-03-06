@@ -421,8 +421,9 @@ class ItemTouchHelper
             mSelectedFlags =
                 (mCallback.getAbsoluteMovementFlags(mRecyclerView!!, selected) and actionStateMask
                         shr mActionState * DIRECTION_FLAG_COUNT)
-            mSelectedStartX = mCallback.itemView(selected).left.toFloat()
-            mSelectedStartY = mCallback.itemView(selected).top.toFloat()
+            val itemView = mCallback.itemView(selected)
+            mSelectedStartX = itemView.left.toFloat() + itemView.translationX
+            mSelectedStartY = itemView.top.toFloat() + itemView.translationY
             mSelected = selected
         }
         val rvParent = mRecyclerView!!.parent
