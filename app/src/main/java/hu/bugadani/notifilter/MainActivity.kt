@@ -1,14 +1,17 @@
 package hu.bugadani.notifilter
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import androidx.activity.viewModels
 import android.widget.ProgressBar
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -34,6 +37,13 @@ class MainActivity : AppCompatActivity() {
             itemTouchHelper.attachToRecyclerView(this)
         }
         appsLoadingView = findViewById(R.id.appsLoading)
+
+        val enabledApps = NotificationManagerCompat.getEnabledListenerPackages(this)
+        if (!enabledApps.contains(BuildConfig.APPLICATION_ID)) {
+            val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(intent)
+        }
     }
 
     override fun onResume() {
