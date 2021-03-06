@@ -21,6 +21,7 @@ import kotlin.math.sign
  *  - no drag support
  *  - Requires API level >= 21
  *  - removed SimpleCallback
+ *  - changed how onSwiped works
  */
 class ItemTouchHelper
 /**
@@ -85,8 +86,7 @@ class ItemTouchHelper
     /**
      * The pointer we are tracking.
      */
-    var mActivePointerId: Int =
-        ACTIVE_POINTER_ID_NONE
+    var mActivePointerId: Int = ACTIVE_POINTER_ID_NONE
 
     /**
      * Current mode.
@@ -386,10 +386,12 @@ class ItemTouchHelper
                     LEFT, RIGHT, START, END -> {
                         targetTranslateY = 0f
                         targetTranslateX = sign(mDx) * mRecyclerView!!.width
+                        mCallback.onSwiped(mRecyclerView!!, mSelected!!, swipeDir)
                     }
                     UP, DOWN -> {
                         targetTranslateX = 0f
                         targetTranslateY = sign(mDy) * mRecyclerView!!.height
+                        mCallback.onSwiped(mRecyclerView!!, mSelected!!, swipeDir)
                     }
                     else -> {
                         targetTranslateX = 0f
@@ -491,7 +493,7 @@ class ItemTouchHelper
                     if ((animator == null || !animator.isRunning(null))
                         && !hasRunningRecoverAnim()
                     ) {
-                        mCallback.onSwiped(anim.mViewHolder, swipeDir)
+                        //mCallback.onSwiped(mRecyclerView!!, anim.mViewHolder, swipeDir)
                     } else {
                         mRecyclerView!!.post(this)
                     }
@@ -576,8 +578,12 @@ class ItemTouchHelper
         } else if (absDy > absDx && lm!!.canScrollVertically()) {
             return null
         }
-        val child = findChildView(motionEvent) ?: return null
-        return mRecyclerView!!.getChildViewHolder(child)
+        return try {
+            val child = findChildView(motionEvent) ?: return null
+            mRecyclerView!!.getChildViewHolder(child)
+        } catch (e: IllegalArgumentException) {
+            null
+        }
     }
 
     /**
@@ -753,8 +759,7 @@ class ItemTouchHelper
 
     private fun checkHorizontalSwipe(viewHolder: ViewHolder, flags: Int): Int {
         if (flags and (LEFT or RIGHT) != 0) {
-            val dirFlag: Int =
-                if (mDx > 0) RIGHT else LEFT
+            val dirFlag: Int = if (mDx > 0) RIGHT else LEFT
             if (mVelocityTracker != null && mActivePointerId > -1) {
                 mVelocityTracker!!.computeCurrentVelocity(
                     PIXELS_PER_SECOND,
@@ -1053,7 +1058,7 @@ class ItemTouchHelper
          * returned relative flags instead of [.LEFT] / [.RIGHT];
          * `direction` will be relative as well. ([.START] or [                   ][.END]).
          */
-        abstract fun onSwiped(viewHolder: ViewHolder, direction: Int)
+        abstract fun onSwiped(recyclerView: RecyclerView, viewHolder: ViewHolder, direction: Int)
 
         /**
          * Called when the ViewHolder swiped by the ItemTouchHelper is changed.
@@ -1064,8 +1069,7 @@ class ItemTouchHelper
          * @param viewHolder  The new ViewHolder that is being swiped or dragged. Might be null if
          * it is cleared.
          * @param actionState One of [ItemTouchHelper.ACTION_STATE_IDLE],
-         * [ItemTouchHelper.ACTION_STATE_SWIPE] or
-         * [ItemTouchHelper.ACTION_STATE_DRAG].
+         * [ItemTouchHelper.ACTION_STATE_SWIPE].
          * @see .clearView
          */
         fun onSelectedChanged(viewHolder: ViewHolder?, actionState: Int) {
@@ -1426,22 +1430,6 @@ class ItemTouchHelper
          * A View is currently being swiped.
          */
         const val ACTION_STATE_SWIPE = 1
-
-        /**
-         * Animation type for views which are swiped successfully.
-         */
-        const val ANIMATION_TYPE_SWIPE_SUCCESS = 1 shl 1
-
-        /**
-         * Animation type for views which are not completely swiped thus will animate back to their
-         * original position.
-         */
-        const val ANIMATION_TYPE_SWIPE_CANCEL = 1 shl 2
-
-        /**
-         * Animation type for views that were dragged and now will animate to their final position.
-         */
-        const val ANIMATION_TYPE_DRAG = 1 shl 3
 
         private const val TAG = "ItemTouchHelper"
         private const val DEBUG = false

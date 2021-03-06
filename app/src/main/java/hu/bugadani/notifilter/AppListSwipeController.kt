@@ -21,8 +21,17 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
         return makeMovementFlags(ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT)
     }
 
-    override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-
+    override fun onSwiped(
+        recyclerView: RecyclerView,
+        viewHolder: RecyclerView.ViewHolder,
+        direction: Int
+    ) {
+        if (direction == ItemTouchHelper.LEFT) {
+            Log.d("SwipeController", "Swiped")
+            registerHider(recyclerView, viewHolder as AppListItemAdapter.ViewHolder)
+            viewHolder.menuOpen = true
+            canReRegister = false
+        }
     }
 
     override fun onChildDraw(
@@ -82,15 +91,7 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
                 if (dX.toInt() <= -viewHolder.backgroundButtons.width) {
                     viewHolder.menuOpen = true
                     canReRegister = false
-                    setTouchDownListener(
-                        c,
-                        recyclerView,
-                        viewHolder,
-                        dX,
-                        dY,
-                        actionState,
-                        isCurrentlyActive
-                    )
+                    registerHider(recyclerView, viewHolder)
                 } else {
                     viewHolder.menuOpen = false
                 }
@@ -101,21 +102,11 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun setTouchDownListener(
-        c: Canvas,
-        recyclerView: RecyclerView,
-        viewHolder: AppListItemAdapter.ViewHolder,
-        dX: Float, dY: Float,
-        actionState: Int, isCurrentlyActive: Boolean
-    ) {
-        recyclerView.setOnTouchListener { _, event ->
-            if (event.action == MotionEvent.ACTION_DOWN) {
-                if (hitTest(recyclerView, viewHolder, event.x, event.y)) {
+    fun registerHider(recyclerView: RecyclerView, viewHolder: AppListItemAdapter.ViewHolder) {
+        recyclerView.setOnTouchListener { _, innerEvent ->
+            if (innerEvent.action == MotionEvent.ACTION_DOWN) {
+                if (hitTest(recyclerView, viewHolder, innerEvent.x, innerEvent.y)) {
                     Log.d("SwipeController", "Open menu touched")
-                    setTouchListener(
-                        c, recyclerView, viewHolder,
-                        -viewHolder.backgroundButtons.width.toFloat(), dY, actionState, false
-                    )
                 } else {
                     Log.d("SwipeController", "List touched")
 
