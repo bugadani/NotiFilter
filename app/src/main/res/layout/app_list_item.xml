@@ -32,7 +32,8 @@
                 android:layout_height="48dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:text="@string/one_minute" />
+                android:text="@string/one_minute"
+                android:tooltipText="@string/tooltip_setting_one_minute" />
 
             <Button
                 android:id="@+id/setting_five_minutes"
@@ -41,7 +42,8 @@
                 android:layout_height="48dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:text="@string/five_minute" />
+                android:text="@string/five_minute"
+                android:tooltipText="@string/tooltip_setting_five_minutes" />
 
             <Button
                 android:id="@+id/setting_manual"
@@ -50,7 +52,8 @@
                 android:layout_height="48dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:text="@string/manual" />
+                android:text="@string/manual"
+                android:tooltipText="@string/tooltip_setting_manual" />
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
         <Button
@@ -61,6 +64,7 @@
             android:insetTop="0dp"
             android:insetBottom="0dp"
             android:text="@string/app_as_one_group"
+            android:tooltipText="@string/tooltip_app_as_one_group"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
