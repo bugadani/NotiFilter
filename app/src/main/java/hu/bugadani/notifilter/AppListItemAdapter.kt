@@ -38,6 +38,7 @@ class AppListItemAdapter(private val enabledFilters: HashMap<String, FilterOptio
         val backgroundButtonsManual: View = backgroundButtons.findViewById(R.id.setting_manual)
         val foreground: View = view.findViewById(R.id.foreground)
         var isChanging: Boolean = false
+        var menuOpen: Boolean = false
     }
 
     // Create new views (invoked by the layout manager)
@@ -55,6 +56,9 @@ class AppListItemAdapter(private val enabledFilters: HashMap<String, FilterOptio
         viewHolder.appNameView.text = appInfo.appName
         viewHolder.appIconView.setImageDrawable(appInfo.icon)
         viewHolder.appEnabledView.tag = appInfo.packageName
+        viewHolder.menuOpen = false
+        viewHolder.foreground.translationX = 0f
+        viewHolder.background.visibility = View.GONE
 
         viewHolder.appEnabledView.setOnCheckedChangeListener { view, isChecked ->
             if (!viewHolder.isChanging) {

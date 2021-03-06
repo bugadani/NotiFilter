@@ -5,48 +5,33 @@ import android.graphics.Canvas
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
-import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
-import kotlin.math.min
-import kotlin.math.max
 
 /**
  * Based on (article) https://codeburst.io/android-swipe-menu-with-recyclerview-8f28a235ff28
  * Based on (source) https://github.com/FanFataL/swipe-controller-demo/blob/master/app/src/main/java/pl/fanfatal/swipecontrollerdemo/SwipeController.java
  */
 class AppListSwipeController : ItemTouchHelper.Callback() {
-    internal enum class MenuState {
-        GONE, VISIBLE
-    }
-
-    private var swipeBack: Boolean = true
-    private var menuState: MenuState = MenuState.GONE
+    private var canReRegister: Boolean = true
 
     override fun getMovementFlags(
         recyclerView: RecyclerView,
         viewHolder: RecyclerView.ViewHolder
     ): Int {
-        return makeMovementFlags(0, ItemTouchHelper.LEFT)
+        return makeMovementFlags(ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT)
     }
 
-    override fun onMove(
+    override fun onSwiped(
         recyclerView: RecyclerView,
         viewHolder: RecyclerView.ViewHolder,
-        target: RecyclerView.ViewHolder
-    ): Boolean {
-        return false
-    }
-
-    override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-
-    }
-
-    override fun convertToAbsoluteDirection(flags: Int, layoutDirection: Int): Int {
-        if (swipeBack) {
-            swipeBack = menuState != MenuState.GONE
-            return 0
+        direction: Int
+    ) {
+        if (direction == ItemTouchHelper.LEFT) {
+            Log.d("SwipeController", "Swiped")
+            registerHider(recyclerView, viewHolder as AppListItemAdapter.ViewHolder)
+            viewHolder.menuOpen = true
+            canReRegister = false
         }
-        return super.convertToAbsoluteDirection(flags, layoutDirection)
     }
 
     override fun onChildDraw(
@@ -58,37 +43,34 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
         actionState: Int,
         isCurrentlyActive: Boolean
     ) {
+        viewHolder as AppListItemAdapter.ViewHolder
+        val clamped_dX = dX.coerceIn(-viewHolder.backgroundButtons.width.toFloat(), 0f)
+
         if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE) {
-            with(viewHolder as AppListItemAdapter.ViewHolder) {
-                if (menuState != MenuState.GONE) {
-                    foreground.translationX = min(dX, -viewHolder.backgroundButtons.width.toFloat())
-                    foreground.translationY = dY
-                } else {
-                    // FIXME: no need to set this on every frame
-                    setTouchListener(
-                        c,
-                        recyclerView,
-                        viewHolder,
-                        dX,
-                        dY,
-                        actionState,
-                        isCurrentlyActive
-                    )
-                }
+            if (canReRegister) {
+                setTouchListener(
+                    c,
+                    recyclerView,
+                    viewHolder,
+                    clamped_dX,
+                    dY,
+                    actionState,
+                    isCurrentlyActive
+                )
             }
         }
 
-        if (menuState == MenuState.GONE) {
-            with(viewHolder as AppListItemAdapter.ViewHolder) {
-                if (dX != 0f) {
-                    background.visibility = View.VISIBLE
-                } else {
-                    background.visibility = View.GONE
-                }
-                foreground.translationX = max(dX, -viewHolder.backgroundButtons.width.toFloat())
-                foreground.translationY = dY
+        if (!viewHolder.menuOpen || isCurrentlyActive) {
+            viewHolder.background.visibility = if (dX != 0f) {
+                View.VISIBLE
+            } else {
+                View.GONE
             }
+            viewHolder.foreground.translationX = clamped_dX
+        } else {
+            viewHolder.foreground.translationX = -viewHolder.backgroundButtons.width.toFloat()
         }
+        viewHolder.foreground.translationY = dY
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -100,25 +82,18 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
         actionState: Int,
         isCurrentlyActive: Boolean
     ) {
-        recyclerView.setOnTouchListener { v, event ->
-            Log.d("SwipeController", "OnTouch")
-            swipeBack =
+        recyclerView.setOnTouchListener { _, event ->
+            val swipeBack =
                 event.action == MotionEvent.ACTION_CANCEL || event.action == MotionEvent.ACTION_UP
 
             if (swipeBack) {
-                if (dX.toInt() < -viewHolder.backgroundButtons.width) {
-                    menuState = MenuState.VISIBLE
-                }
-                if (menuState != MenuState.GONE) {
-                    setTouchDownListener(
-                        c,
-                        recyclerView,
-                        viewHolder,
-                        dX,
-                        dY,
-                        actionState,
-                        isCurrentlyActive
-                    )
+                Log.d("SwipeController", "end: $dX")
+                if (dX.toInt() <= -viewHolder.backgroundButtons.width) {
+                    viewHolder.menuOpen = true
+                    canReRegister = false
+                    registerHider(recyclerView, viewHolder)
+                } else {
+                    viewHolder.menuOpen = false
                 }
             }
 
@@ -127,31 +102,48 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun setTouchDownListener(
-        c: Canvas,
-        recyclerView: RecyclerView,
-        viewHolder: RecyclerView.ViewHolder,
-        dX: Float, dY: Float,
-        actionState: Int, isCurrentlyActive: Boolean
-    ) {
-        recyclerView.setOnTouchListener { v, event ->
-            if (event.action == MotionEvent.ACTION_DOWN) {
-                Log.d("SwipeController", "TouchDown")
-                recyclerView.setOnTouchListener { v, event -> false }
-                swipeBack = false
-                menuState = MenuState.GONE
-                // FIXME: it would be nice if this animated
-                this@AppListSwipeController.onChildDraw(
-                    c,
-                    recyclerView,
-                    viewHolder,
-                    0f,
-                    dY,
-                    actionState,
-                    isCurrentlyActive
-                )
+    fun registerHider(recyclerView: RecyclerView, viewHolder: AppListItemAdapter.ViewHolder) {
+        recyclerView.setOnTouchListener { _, innerEvent ->
+            if (innerEvent.action == MotionEvent.ACTION_DOWN) {
+                if (hitTest(recyclerView, viewHolder, innerEvent.x, innerEvent.y)) {
+                    Log.d("SwipeController", "Open menu touched")
+                } else {
+                    Log.d("SwipeController", "List touched")
+
+                    viewHolder.menuOpen = false
+
+                    recyclerView.setOnTouchListener { _, _ -> false }
+
+                    startRecoveryAnimation(
+                        viewHolder,
+                        -viewHolder.backgroundButtons.width.toFloat()
+                    )
+                }
+
+                canReRegister = true
             }
             false
         }
+    }
+
+    override fun hitTest(
+        parent: View,
+        child: RecyclerView.ViewHolder,
+        x: Float,
+        y: Float
+    ): Boolean {
+        val child = (child as AppListItemAdapter.ViewHolder).foreground
+
+        val loc = IntArray(2)
+        val ploc = IntArray(2)
+        parent.getLocationInWindow(ploc)
+        child.getLocationInWindow(loc)
+        val left = loc[0] - ploc[0]
+        val top = loc[1] - ploc[1]
+        return x >= left && x <= left + child.width && y >= top && y <= top + child.height
+    }
+
+    override fun itemView(child: RecyclerView.ViewHolder): View {
+        return (child as AppListItemAdapter.ViewHolder).foreground
     }
 }
