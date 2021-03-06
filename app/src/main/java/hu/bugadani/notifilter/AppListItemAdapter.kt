@@ -38,7 +38,6 @@ class AppListItemAdapter(private val enabledFilters: HashMap<String, FilterOptio
         val backgroundButtonsManual: View = backgroundButtons.findViewById(R.id.setting_manual)
         val foreground: View = view.findViewById(R.id.foreground)
         var isChanging: Boolean = false
-        var lastDx : Float = 0f
         var menuOpen: Boolean = false
     }
 
@@ -57,7 +56,6 @@ class AppListItemAdapter(private val enabledFilters: HashMap<String, FilterOptio
         viewHolder.appNameView.text = appInfo.appName
         viewHolder.appIconView.setImageDrawable(appInfo.icon)
         viewHolder.appEnabledView.tag = appInfo.packageName
-        viewHolder.lastDx  = 0f
         viewHolder.menuOpen = false
         viewHolder.foreground.translationX = 0f
         viewHolder.background.visibility = View.GONE

@@ -62,10 +62,6 @@ class AppListSwipeController() : ItemTouchHelper.Callback() {
             viewHolder.foreground.translationX = -viewHolder.backgroundButtons.width.toFloat()
         }
         viewHolder.foreground.translationY = dY
-
-        if (!isCurrentlyActive) {
-            viewHolder.lastDx = viewHolder.foreground.translationX
-        }
     }
 
     @SuppressLint("ClickableViewAccessibility")

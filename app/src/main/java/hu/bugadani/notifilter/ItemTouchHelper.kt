@@ -383,7 +383,7 @@ class ItemTouchHelper
             // we remove after animation is complete. this means we only elevate the last drag
             // child but that should perform good enough as it is very hard to start dragging a
             // new child before the previous one settles.
-            mOverdrawChild = selected.itemView
+            mOverdrawChild = mCallback.itemView(selected)
         }
         val actionStateMask =
             ((1 shl DIRECTION_FLAG_COUNT + DIRECTION_FLAG_COUNT * actionState)
@@ -391,7 +391,7 @@ class ItemTouchHelper
         var preventLayout = false
         if (mSelected != null) {
             val prevSelected: ViewHolder = mSelected as ViewHolder
-            if (prevSelected.itemView.parent != null) {
+            if (mCallback.itemView(prevSelected).parent != null) {
                 val swipeDir =
                     if (prevActionState == ACTION_STATE_DRAG) 0 else swipeIfNecessary(
                         prevSelected
@@ -432,7 +432,7 @@ class ItemTouchHelper
                 )
                 preventLayout = true
             } else {
-                removeChildDrawingOrderCallbackIfNecessary(prevSelected.itemView)
+                removeChildDrawingOrderCallbackIfNecessary(mCallback.itemView(prevSelected))
                 mCallback.clearView(mRecyclerView!!, prevSelected)
             }
             mSelected = null
@@ -441,11 +441,11 @@ class ItemTouchHelper
             mSelectedFlags =
                 (mCallback.getAbsoluteMovementFlags(mRecyclerView!!, selected) and actionStateMask
                         shr mActionState * DIRECTION_FLAG_COUNT)
-            mSelectedStartX = selected.itemView.left.toFloat()
-            mSelectedStartY = selected.itemView.top.toFloat()
+            mSelectedStartX = mCallback.itemView(selected).left.toFloat()
+            mSelectedStartY = mCallback.itemView(selected).top.toFloat()
             mSelected = selected
             if (actionState == ACTION_STATE_DRAG) {
-                mCallback.itemView(mSelected!!).performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                mCallback.itemView(selected).performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             }
         }
         val rvParent = mRecyclerView!!.parent
@@ -483,7 +483,7 @@ class ItemTouchHelper
                     // full cleanup will happen on onDrawOver
                 } else {
                     // wait until remove animation is complete.
-                    mPendingCleanup.add(viewHolder.itemView)
+                    mPendingCleanup.add(mCallback.itemView(viewHolder))
                     mIsPendingCleanup = true
                     if (swipeDir > 0) {
                         // Animation might be ended by other animators during a layout.
@@ -492,8 +492,8 @@ class ItemTouchHelper
                     }
                 }
                 // removed from the list after it is drawn for the last time
-                if (mOverdrawChild === viewHolder.itemView) {
-                    removeChildDrawingOrderCallbackIfNecessary(viewHolder.itemView)
+                if (mOverdrawChild === mCallback.itemView(viewHolder)) {
+                    removeChildDrawingOrderCallbackIfNecessary(mCallback.itemView(viewHolder))
                 }
             }
         }
@@ -531,13 +531,7 @@ class ItemTouchHelper
     }
 
     fun hasRunningRecoverAnim(): Boolean {
-        val size = mRecoverAnimations.size
-        for (i in 0 until size) {
-            if (!mRecoverAnimations[i].mEnded) {
-                return true
-            }
-        }
-        return false
+        return mRecoverAnimations.any { !it.mEnded }
     }
 
     override fun onChildViewAttachedToWindow(view: View) {}
@@ -548,7 +542,7 @@ class ItemTouchHelper
             select(null, ACTION_STATE_IDLE)
         } else {
             endRecoverAnimation(holder, false) // this may push it into pending cleanup list.
-            if (mPendingCleanup.remove(holder.itemView)) {
+            if (mPendingCleanup.remove(mCallback.itemView(holder))) {
                 mCallback.clearView(mRecyclerView!!, holder)
             }
         }
@@ -890,7 +884,7 @@ class ItemTouchHelper
         private lateinit var mOwner: ItemTouchHelper
 
         protected fun startRecoveryAnimation(viewHolder: ViewHolder, initial: Float) {
-            val running = mOwner.findAnimationForView(viewHolder.itemView)
+            val running = mOwner.findAnimationForView(itemView(viewHolder))
 
             if (running != null) {
                 running.mOverridden = true
