@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
  * Based on (article) https://codeburst.io/android-swipe-menu-with-recyclerview-8f28a235ff28
  * Based on (source) https://github.com/FanFataL/swipe-controller-demo/blob/master/app/src/main/java/pl/fanfatal/swipecontrollerdemo/SwipeController.java
  */
-class AppListSwipeController() : ItemTouchHelper.Callback() {
+class AppListSwipeController : ItemTouchHelper.Callback() {
     private var canReRegister: Boolean = true
 
     override fun getMovementFlags(
