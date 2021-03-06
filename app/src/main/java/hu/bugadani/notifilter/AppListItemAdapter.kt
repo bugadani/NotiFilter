@@ -73,7 +73,7 @@ class AppListItemAdapter(private val enabledFilters: HashMap<String, FilterOptio
             }
         }
 
-        viewHolder.backgroundButtons.addOnButtonCheckedListener { group, checkedId, isChecked ->
+        viewHolder.backgroundButtons.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!viewHolder.isChanging) {
                 viewHolder.isChanging = true
                 try {

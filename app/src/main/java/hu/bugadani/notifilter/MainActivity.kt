@@ -1,14 +1,11 @@
 package hu.bugadani.notifilter
 
-import android.content.Context
-import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.ProgressBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
-import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -38,13 +35,6 @@ class MainActivity : AppCompatActivity() {
             itemTouchHelper.attachToRecyclerView(this)
         }
         appsLoadingView = findViewById(R.id.appsLoading)
-    }
-
-    private fun getPreferences(): SharedPreferences {
-        return getSharedPreferences(
-            "appSettings",
-            Context.MODE_PRIVATE
-        )
     }
 
     override fun onResume() {
