@@ -1,14 +1,12 @@
 package hu.bugadani.notifilter
 
-import android.content.Context
-import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import androidx.activity.viewModels
 import android.widget.ProgressBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
-import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -19,15 +17,13 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var appListView: RecyclerView
     private lateinit var appsLoadingView: ProgressBar
-    private val enabledFilters =  HashMap<String, FilterOption>()
-    private lateinit var viewModel: AppListViewModel
+    private val enabledFilters = HashMap<String, FilterOption>()
+    private val viewModel: AppListViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_main)
-
-        viewModel = AppListViewModel(packageManager)
 
         appListView = findViewById<RecyclerView>(R.id.appList).apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
@@ -38,13 +34,6 @@ class MainActivity : AppCompatActivity() {
             itemTouchHelper.attachToRecyclerView(this)
         }
         appsLoadingView = findViewById(R.id.appsLoading)
-    }
-
-    private fun getPreferences(): SharedPreferences {
-        return getSharedPreferences(
-            "appSettings",
-            Context.MODE_PRIVATE
-        )
     }
 
     override fun onResume() {

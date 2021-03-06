@@ -1,17 +1,18 @@
 package hu.bugadani.notifilter
 
+import android.app.Application
 import android.content.Intent
-import android.content.pm.PackageManager
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.liveData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class AppListViewModel(packageManager: PackageManager) : ViewModel() {
+class AppListViewModel(application: Application) : AndroidViewModel(application) {
 
     val appListItems: LiveData<ArrayList<AppListItem>> = liveData {
         val elements = ArrayList<AppListItem>()
+        val packageManager = application.packageManager
         withContext(Dispatchers.IO) {
             val packages = packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN, null), 0)
             val seen = HashSet<String>()

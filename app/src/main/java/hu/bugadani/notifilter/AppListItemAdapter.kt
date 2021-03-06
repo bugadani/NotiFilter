@@ -20,16 +20,9 @@ class AppListItemAdapter(private val enabledFilters: HashMap<String, FilterOptio
      * (custom ViewHolder).
      */
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val appNameView: TextView = view.findViewById(
-            R.id.appName
-        )
-        val appIconView: ImageView = view.findViewById(
-            R.id.appIcon
-        )
-        val appEnabledView: Switch = view.findViewById(
-            R.id.appEnabled
-        )
-        val background: View = view.findViewById(R.id.background)
+        val appNameView: TextView = view.findViewById(R.id.appName)
+        val appIconView: ImageView = view.findViewById(R.id.appIcon)
+        val appEnabledView: Switch = view.findViewById(R.id.appEnabled)
         val backgroundButtons: MaterialButtonToggleGroup =
             view.findViewById(R.id.background_buttons)
         val backgroundButtons1Minute: View = backgroundButtons.findViewById(R.id.setting_one_minute)
@@ -58,7 +51,6 @@ class AppListItemAdapter(private val enabledFilters: HashMap<String, FilterOptio
         viewHolder.appEnabledView.tag = appInfo.packageName
         viewHolder.menuOpen = false
         viewHolder.foreground.translationX = 0f
-        viewHolder.background.visibility = View.GONE
 
         viewHolder.appEnabledView.setOnCheckedChangeListener { view, isChecked ->
             if (!viewHolder.isChanging) {
@@ -73,7 +65,7 @@ class AppListItemAdapter(private val enabledFilters: HashMap<String, FilterOptio
             }
         }
 
-        viewHolder.backgroundButtons.addOnButtonCheckedListener { group, checkedId, isChecked ->
+        viewHolder.backgroundButtons.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!viewHolder.isChanging) {
                 viewHolder.isChanging = true
                 try {

@@ -60,15 +60,10 @@ class AppListSwipeController : ItemTouchHelper.Callback() {
             }
         }
 
-        if (!viewHolder.menuOpen || isCurrentlyActive) {
-            viewHolder.background.visibility = if (dX != 0f) {
-                View.VISIBLE
-            } else {
-                View.GONE
-            }
-            viewHolder.foreground.translationX = clamped_dX
+        viewHolder.foreground.translationX = if (!viewHolder.menuOpen || isCurrentlyActive) {
+            clamped_dX
         } else {
-            viewHolder.foreground.translationX = -viewHolder.backgroundButtons.width.toFloat()
+            -viewHolder.backgroundButtons.width.toFloat()
         }
         viewHolder.foreground.translationY = dY
     }
