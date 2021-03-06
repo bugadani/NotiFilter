@@ -11,6 +11,7 @@ import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.*
 import java.util.*
+import kotlin.math.sign
 
 /**
  * This is a cut-down version of ItemTouchHelper from androidx.
@@ -136,7 +137,11 @@ class ItemTouchHelper
      * position callback is called. This value is invalidated whenever a child is attached or
      * detached.
      */
-    var mOverdrawChildPosition = -1
+    private var mOverdrawChildPosition = -1
+
+    init {
+        mCallback.setup(this)
+    }
 
     private val mOnItemTouchListener: OnItemTouchListener = object :
         OnItemTouchListener {
@@ -393,11 +398,11 @@ class ItemTouchHelper
                 when (swipeDir) {
                     LEFT, RIGHT, START, END -> {
                         targetTranslateY = 0f
-                        targetTranslateX = Math.signum(mDx) * mRecyclerView!!.width
+                        targetTranslateX = sign(mDx) * mRecyclerView!!.width
                     }
                     UP, DOWN -> {
                         targetTranslateX = 0f
-                        targetTranslateY = Math.signum(mDy) * mRecyclerView!!.height
+                        targetTranslateY = sign(mDy) * mRecyclerView!!.height
                     }
                     else -> {
                         targetTranslateX = 0f
@@ -415,43 +420,10 @@ class ItemTouchHelper
                 getSelectedDxDy(mTmpPosition)
                 val currentTranslateX = mTmpPosition[0]
                 val currentTranslateY = mTmpPosition[1]
-                val rv = object : RecoverAnimation(
+                startRecoverAnimation(
                     prevSelected,
                     prevActionState, currentTranslateX, currentTranslateY,
-                    targetTranslateX, targetTranslateY
-                ) {
-                    override fun onAnimationEnd(animation: Animator) {
-                        super.onAnimationEnd(animation)
-                        if (mOverridden) {
-                            return
-                        }
-                        if (swipeDir <= 0) {
-                            // this is a drag or failed swipe. recover immediately
-                            mCallback.clearView(mRecyclerView!!, prevSelected)
-                            // full cleanup will happen on onDrawOver
-                        } else {
-                            // wait until remove animation is complete.
-                            mPendingCleanup.add(prevSelected.itemView)
-                            mIsPendingCleanup = true
-                            if (swipeDir > 0) {
-                                // Animation might be ended by other animators during a layout.
-                                // We defer callback to avoid editing adapter during a layout.
-                                postDispatchSwipe(this, swipeDir)
-                            }
-                        }
-                        // removed from the list after it is drawn for the last time
-                        if (mOverdrawChild === prevSelected.itemView) {
-                            removeChildDrawingOrderCallbackIfNecessary(prevSelected.itemView)
-                        }
-                    }
-                }
-                val duration = mCallback.getAnimationDuration(
-                    mRecyclerView!!, animationType,
-                    targetTranslateX - currentTranslateX, targetTranslateY - currentTranslateY
-                )
-                rv.setDuration(duration)
-                mRecoverAnimations.add(rv)
-                rv.start()
+                    targetTranslateX, targetTranslateY, swipeDir, animationType)
                 preventLayout = true
             } else {
                 removeChildDrawingOrderCallbackIfNecessary(prevSelected.itemView)
@@ -477,6 +449,55 @@ class ItemTouchHelper
         }
         mCallback.onSelectedChanged(mSelected, mActionState)
         mRecyclerView!!.invalidate()
+    }
+
+    fun startRecoverAnimation(
+        viewHolder: ViewHolder,
+        actionState: Int,
+        currentTranslateX: Float,
+        currentTranslateY: Float,
+        targetTranslateX: Float,
+        targetTranslateY: Float,
+        swipeDir: Int,
+        animationType: Int
+    ) {
+        val rv = object : RecoverAnimation(
+            viewHolder,
+            actionState, currentTranslateX, currentTranslateY,
+            targetTranslateX, targetTranslateY
+        ) {
+            override fun onAnimationEnd(animation: Animator) {
+                super.onAnimationEnd(animation)
+                if (mOverridden) {
+                    return
+                }
+                if (swipeDir <= 0) {
+                    // this is a drag or failed swipe. recover immediately
+                    mCallback.clearView(mRecyclerView!!, viewHolder)
+                    // full cleanup will happen on onDrawOver
+                } else {
+                    // wait until remove animation is complete.
+                    mPendingCleanup.add(viewHolder.itemView)
+                    mIsPendingCleanup = true
+                    if (swipeDir > 0) {
+                        // Animation might be ended by other animators during a layout.
+                        // We defer callback to avoid editing adapter during a layout.
+                        postDispatchSwipe(this, swipeDir)
+                    }
+                }
+                // removed from the list after it is drawn for the last time
+                if (mOverdrawChild === viewHolder.itemView) {
+                    removeChildDrawingOrderCallbackIfNecessary(viewHolder.itemView)
+                }
+            }
+        }
+        val duration = mCallback.getAnimationDuration(
+            mRecyclerView!!, animationType,
+            targetTranslateX - currentTranslateX, targetTranslateY - currentTranslateY
+        )
+        rv.setDuration(duration)
+        mRecoverAnimations.add(rv)
+        rv.start()
     }
 
     fun postDispatchSwipe(anim: RecoverAnimation, swipeDir: Int) {
@@ -643,7 +664,8 @@ class ItemTouchHelper
             }
         }
         mDy = 0f
-        mDx = mDy
+        mInitialTouchX -= mCallback.initialDx(vh)
+        mDx = mCallback.initialDx(vh)
         mActivePointerId = motionEvent.getPointerId(0)
         select(vh, ACTION_STATE_SWIPE)
     }
@@ -680,9 +702,13 @@ class ItemTouchHelper
             return null
         }
         val target = findChildView(event)
+        return findAnimationForView(target)
+    }
+
+    fun findAnimationForView(view: View?) : RecoverAnimation? {
         for (i in mRecoverAnimations.indices.reversed()) {
             val anim = mRecoverAnimations[i]
-            if (anim.mViewHolder.itemView === target) {
+            if (anim.mViewHolder.itemView === view) {
                 return anim
             }
         }
@@ -858,6 +884,18 @@ class ItemTouchHelper
      * adapter (e.g. remove the item) and call related Adapter#notify event.
      */
     abstract class Callback {
+        private lateinit var mOwner: ItemTouchHelper
+
+        protected fun startRecoveryAnimation(viewHolder: ViewHolder, initial: Float) {
+            val running = mOwner.findAnimationForView(viewHolder.itemView)
+
+            if (running != null) {
+                running.mOverridden = true
+            }
+
+            mOwner.startRecoverAnimation(viewHolder, ACTION_STATE_SWIPE, initial, 0f, 0f, 0f, LEFT, ANIMATION_TYPE_SWIPE_CANCEL)
+        }
+
         /**
          * Should return a composite flag which defines the enabled move directions in each state
          * (idle, swiping, dragging).
@@ -1135,6 +1173,10 @@ class ItemTouchHelper
 
         }
 
+        open fun initialDx(viewHolder: RecyclerView.ViewHolder) : Float {
+            return 0f
+        }
+
         /**
          * Called by ItemTouchHelper on RecyclerView's onDraw callback.
          *
@@ -1236,6 +1278,10 @@ class ItemTouchHelper
             } else {
                 if (animationType == ANIMATION_TYPE_DRAG) itemAnimator.moveDuration else itemAnimator.removeDuration
             }
+        }
+
+        fun setup(owner: ItemTouchHelper) {
+            mOwner = owner
         }
 
         companion object {
