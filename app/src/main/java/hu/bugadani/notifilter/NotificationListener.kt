@@ -35,18 +35,17 @@ class NotificationListener : NotificationListenerService() {
     private val receiver = UnlockReceiver(this)
     private var proxied: HashMap<NotificationGroup, Long> = HashMap()
     private var proxiedNotifications: HashMap<Int, ProxiedNotificationData> = HashMap()
+    private var perAppOptions = HashMap<String, AppOptions>()
 
     private val channel = NotificationChannel(
         "P",
         "Proxied Notifications",
         NotificationManager.IMPORTANCE_LOW
     ).apply {
-        this.description = "The proxied notifications"
+        description = "The proxied notifications"
     }
     private var enabled = false
     private var connected = false
-    private var id = 0
-    var perAppOptions = HashMap<String, AppOptions>()
 
     override fun onCreate() {
         super.onCreate()
@@ -69,7 +68,7 @@ class NotificationListener : NotificationListenerService() {
 
     private fun onScreenOff() {
         enabled = true
-        Log.d(TAG, "Screen off")
+        Log.d(TAG, "Screen off - enabled: $enabled connected: $connected")
         updateOptions()
     }
 
@@ -109,10 +108,11 @@ class NotificationListener : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        Log.d(
-            TAG,
-            "Notification posted: ${sbn.notification}"
-        )
+        Log.d(TAG, "Notification posted: $sbn")
+        Log.d(TAG, "Group: ${sbn.groupKey}")
+        Log.d(TAG, "Category: ${sbn.notification.category}")
+        Log.d(TAG, "Ticker: ${sbn.notification.tickerText}")
+
         if (!connected || !enabled) {
             Log.d(TAG, "Notification ignored: disabled")
             return
@@ -160,14 +160,17 @@ class NotificationListener : NotificationListenerService() {
     private fun isRepost(sbn: StatusBarNotification): Boolean {
         val group = notificationGroup(sbn)
 
+        // If the group is not stored (first in group or manually reset), we allow the notification
         val posted = proxied[group] ?: return false
 
+        val age = System.currentTimeMillis() - posted
         return when (perAppOptions[sbn.packageName]?.filterOption) {
-            FilterOption.Ignore -> true
-            FilterOption.AutoReset1Minute -> posted > System.currentTimeMillis() - RELAX_ONE_MINUTE
-            FilterOption.AutoReset5Minutes -> posted > System.currentTimeMillis() - RELAX_FIVE_MINUTES
-            FilterOption.ManualReset -> true
-            null -> true
+            // We may allow notification to go through after a certain time
+            FilterOption.AutoReset1Minute -> age < RELAX_ONE_MINUTE
+            FilterOption.AutoReset5Minutes -> age < RELAX_FIVE_MINUTES
+
+            // Anything else gets blocked
+            else -> true
         }
     }
 
@@ -186,12 +189,7 @@ class NotificationListener : NotificationListenerService() {
 
         proxied[group] = System.currentTimeMillis()
 
-        Log.d(
-            TAG,
-            "Proxying notification: ${sbn.id} - ${sbn.notification.tickerText}"
-        )
-        Log.d(TAG, "Group: $group")
-        Log.d(TAG, "Category: ${sbn.notification.category}")
+        Log.d(TAG, "Proxying notification")
 
         // new notification group
         try {
@@ -208,21 +206,27 @@ class NotificationListener : NotificationListenerService() {
 
             val notificationManager =
                 getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.notify(proxiedNotifications.size, notification)
 
-            proxiedNotifications[id] =
-                ProxiedNotificationData(group, sbn.key, sbn.notification.flags)
+            // We can't use a list because notifications may be removed in an arbitrary order
+            val id = proxiedNotifications.size
+            notificationManager.notify(id, notification)
+
+            proxiedNotifications[id] = ProxiedNotificationData(
+                group, sbn.key, sbn.notification.flags
+            )
         } catch (e: IllegalArgumentException) {
             Log.e(TAG, "Exception: $e")
         }
     }
 
     private fun notificationGroup(sbn: StatusBarNotification): NotificationGroup {
-        return if (isGroupOverrideActive(sbn.packageName)) {
-            NotificationGroup(sbn.packageName, "appGroup")
+        val group = if (isGroupOverrideActive(sbn.packageName)) {
+            "appGroup"
         } else {
-            NotificationGroup(sbn.packageName, sbn.groupKey)
+            sbn.groupKey
         }
+
+        return NotificationGroup(sbn.packageName, group)
     }
 
     private fun clearAllNotifications() {
