@@ -109,10 +109,11 @@ class NotificationListener : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        Log.d(
-            TAG,
-            "Notification posted: ${sbn.notification}"
-        )
+        Log.d(TAG, "Notification posted: $sbn")
+        Log.d(TAG, "Group: ${sbn.groupKey}")
+        Log.d(TAG, "Category: ${sbn.notification.category}")
+        Log.d(TAG, "Ticker: ${sbn.notification.tickerText}")
+
         if (!connected || !enabled) {
             Log.d(TAG, "Notification ignored: disabled")
             return
@@ -186,12 +187,7 @@ class NotificationListener : NotificationListenerService() {
 
         proxied[group] = System.currentTimeMillis()
 
-        Log.d(
-            TAG,
-            "Proxying notification: ${sbn.id} - ${sbn.notification.tickerText}"
-        )
-        Log.d(TAG, "Group: $group")
-        Log.d(TAG, "Category: ${sbn.notification.category}")
+        Log.d(TAG, "Proxying notification")
 
         // new notification group
         try {
