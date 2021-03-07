@@ -112,6 +112,7 @@ class NotificationListener : NotificationListenerService() {
         Log.d(TAG, "Group: ${sbn.groupKey}")
         Log.d(TAG, "Category: ${sbn.notification.category}")
         Log.d(TAG, "Ticker: ${sbn.notification.tickerText}")
+        Log.d(TAG, "Content text: ${sbn.notification.extras[Notification.EXTRA_TEXT]}")
 
         if (!connected || !enabled) {
             Log.d(TAG, "Notification ignored: disabled")
