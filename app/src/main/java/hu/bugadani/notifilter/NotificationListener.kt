@@ -46,7 +46,7 @@ class NotificationListener : NotificationListenerService() {
     private var enabled = false
     private var connected = false
     private var id = 0
-    var enabledFilters = HashMap<String, FilterOption>()
+    var perAppOptions = HashMap<String, AppOptions>()
 
     override fun onCreate() {
         super.onCreate()
@@ -70,11 +70,11 @@ class NotificationListener : NotificationListenerService() {
     private fun onScreenOff() {
         enabled = true
         Log.d(TAG, "Screen off")
-        updateFilter()
+        updateOptions()
     }
 
-    private fun updateFilter() {
-        SettingsHelper.load(this, enabledFilters)
+    private fun updateOptions() {
+        SettingsHelper.load(this, perAppOptions)
     }
 
     override fun onListenerConnected() {
@@ -95,7 +95,7 @@ class NotificationListener : NotificationListenerService() {
         proxied.clear()
         proxiedNotifications.clear()
 
-        updateFilter()
+        updateOptions()
 
         return super.onStartCommand(intent, flags, startId)
     }
@@ -162,16 +162,23 @@ class NotificationListener : NotificationListenerService() {
 
         val posted = proxied[group] ?: return false
 
-        return when (enabledFilters[sbn.packageName]) {
+        return when (perAppOptions[sbn.packageName]?.filterOption) {
+            FilterOption.Ignore -> true
             FilterOption.AutoReset1Minute -> posted > System.currentTimeMillis() - RELAX_ONE_MINUTE
             FilterOption.AutoReset5Minutes -> posted > System.currentTimeMillis() - RELAX_FIVE_MINUTES
             FilterOption.ManualReset -> true
-            else -> true // shouldn't be hit, but treat as a block
+            null -> true
         }
     }
 
     private fun shouldProxyForApp(sbn: StatusBarNotification): Boolean {
-        return enabledFilters.contains(sbn.packageName)
+        val appOptions = perAppOptions[sbn.packageName] ?: return false
+
+        return appOptions.filterOption != FilterOption.Ignore
+    }
+
+    private fun isGroupOverrideActive(packageName: String): Boolean {
+        return perAppOptions[packageName]?.overrideGroups ?: return false
     }
 
     private fun proxyNotification(sbn: StatusBarNotification) {
@@ -211,7 +218,11 @@ class NotificationListener : NotificationListenerService() {
     }
 
     private fun notificationGroup(sbn: StatusBarNotification): NotificationGroup {
-        return NotificationGroup(sbn.packageName, sbn.groupKey)
+        return if (isGroupOverrideActive(sbn.packageName)) {
+            NotificationGroup(sbn.packageName, "appGroup")
+        } else {
+            NotificationGroup(sbn.packageName, sbn.groupKey)
+        }
     }
 
     private fun clearAllNotifications() {

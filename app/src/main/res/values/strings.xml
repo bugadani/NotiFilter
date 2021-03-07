@@ -8,8 +8,9 @@
     <string name="five_minute">5\'</string>
     <string name="one_minute">1\'</string>
     <string name="manual">✓</string>
-    <string name="app_as_one_group">A</string>
-    <string name="tooltip_app_as_one_group">Treat all notifications as a group</string>
+    <string name="app_as_one_group">APP</string>
+    <string name="separate_groups">GROUP</string>
+    <string name="tooltip_app_as_one_group">APP: Treat notifications as a single group</string>
     <string name="tooltip_setting_manual">Only allow the first notification in a group</string>
     <string name="tooltip_setting_five_minutes">Allow one notification per group in 5 minutes</string>
     <string name="tooltip_setting_one_minute">Allow one notification per group in one minute</string>

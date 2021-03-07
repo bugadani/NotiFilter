@@ -20,7 +20,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var appListView: RecyclerView
     private lateinit var appsLoadingView: ProgressBar
-    private val enabledFilters = HashMap<String, FilterOption>()
+    private val perAppOptions = HashMap<String, AppOptions>()
     private val viewModel: AppListViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
 
         appListView = findViewById<RecyclerView>(R.id.appList).apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
-            adapter = AppListItemAdapter(enabledFilters)
+            adapter = AppListItemAdapter(perAppOptions)
             setHasFixedSize(true)
 
             val itemTouchHelper = ItemTouchHelper(AppListSwipeController())
@@ -51,7 +51,7 @@ class MainActivity : AppCompatActivity() {
 
         super.onResume()
 
-        SettingsHelper.load(this, enabledFilters)
+        SettingsHelper.load(this, perAppOptions)
 
         viewModel.appListItems.observe(this, Observer { items ->
             (appListView.adapter as AppListItemAdapter).submitList(items)
@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         Log.d(TAG, "Saving preferences")
-        SettingsHelper.save(this, enabledFilters)
+        SettingsHelper.save(this, perAppOptions)
 
         super.onPause()
     }
