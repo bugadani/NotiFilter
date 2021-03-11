@@ -1,4 +1,4 @@
-package hu.bugadani.notifilter
+package hu.bugadani.notifilter.activity
 
 import android.content.Intent
 import android.os.Bundle
@@ -11,6 +11,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import hu.bugadani.notifilter.*
 
 
 class MainActivity : AppCompatActivity() {
