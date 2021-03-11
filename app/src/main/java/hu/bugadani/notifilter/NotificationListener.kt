@@ -34,7 +34,7 @@ class NotificationListener : NotificationListenerService() {
     }
 
     private val receiver = UnlockReceiver(this)
-    private val collector = NotificationCollector(this)
+    private lateinit var collector: NotificationCollector
     private var proxied: HashMap<NotificationGroup, Long> = HashMap()
     private var proxiedNotifications: HashMap<Int, ProxiedNotificationData> = HashMap()
     private var perAppOptions = HashMap<String, AppOptions>()
@@ -55,6 +55,9 @@ class NotificationListener : NotificationListenerService() {
         super.onCreate()
 
         Log.d(TAG, "onCreate")
+
+        // FIXME this crashes because it accesses database on the UI thread
+        collector = NotificationCollector(applicationContext)
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
