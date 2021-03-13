@@ -10,7 +10,7 @@ interface NotificationDao {
     @Query("SELECT * FROM notification_record")
     fun listAll(): List<NotificationRecord>
 
-    @Query("SELECT DISTINCT package_id, app_name FROM notification_record")
+    @Query("SELECT DISTINCT package_id FROM notification_record")
     fun listApps(): List<RecordedApp>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
