@@ -30,7 +30,6 @@ class NotificationCollector(context: Context) {
             for (sbn in list) {
                 val record = NotificationRecord(
                     packageId = sbn.packageName,
-                    appName = "",
                     groupKey = sbn.groupKey,
                     details = gson.toJson(sbn.notification),
                 )
