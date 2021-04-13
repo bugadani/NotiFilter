@@ -12,6 +12,9 @@ class NotificationDiscarder {
         filters["com.facebook.orca"] = listOf(
             Category(Equals("service"))
         )
+        filters["com.viber.voip"] = listOf(
+            Category(Equals(null))
+        )
     }
 
     fun discard(sbn: StatusBarNotification): Boolean {
