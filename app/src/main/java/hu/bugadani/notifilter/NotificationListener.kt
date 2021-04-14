@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import hu.bugadani.notifilter.discard.NotificationDiscarder
 
 class NotificationListener : NotificationListenerService() {
 
@@ -36,6 +37,7 @@ class NotificationListener : NotificationListenerService() {
     private var proxied: HashMap<NotificationGroup, Long> = HashMap()
     private var proxiedNotifications: HashMap<Int, ProxiedNotificationData> = HashMap()
     private var perAppOptions = HashMap<String, AppOptions>()
+    private var discarder = NotificationDiscarder()
 
     private val channel = NotificationChannel(
         "P",
@@ -112,13 +114,14 @@ class NotificationListener : NotificationListenerService() {
         Log.d(TAG, "Group: ${sbn.groupKey}")
         Log.d(TAG, "Category: ${sbn.notification.category}")
         Log.d(TAG, "Ticker: ${sbn.notification.tickerText}")
+        Log.d(TAG, "Content text: ${sbn.notification.extras[Notification.EXTRA_TEXT]}")
 
         if (!connected || !enabled) {
             Log.d(TAG, "Notification ignored: disabled")
             return
         }
-        if (sbn.notification.tickerText == null) {
-            Log.d(TAG, "Notification ignored: no ticker text")
+        if (discarder.discard(sbn))  {
+            Log.d(TAG, "Notification discarded")
             return
         }
         if (!shouldProxyForApp(sbn)) {
