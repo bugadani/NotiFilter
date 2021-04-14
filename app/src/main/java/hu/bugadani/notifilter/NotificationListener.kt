@@ -205,6 +205,7 @@ class NotificationListener : NotificationListenerService() {
                 .setCategory(sbn.notification.category)
                 .setTicker(sbn.notification.tickerText)
                 .setAutoCancel(sbn.notification.flags.and(Notification.FLAG_AUTO_CANCEL) != 0)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .build()
 
             val notificationManager =
