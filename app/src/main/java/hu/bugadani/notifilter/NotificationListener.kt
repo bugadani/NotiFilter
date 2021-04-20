@@ -48,6 +48,7 @@ class NotificationListener : NotificationListenerService() {
     }
     private var enabled = false
     private var connected = false
+    private var sequential_id = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -205,7 +206,7 @@ class NotificationListener : NotificationListenerService() {
                 .setCategory(sbn.notification.category)
                 .setTicker(sbn.notification.tickerText)
                 .setAutoCancel(sbn.notification.flags.and(Notification.FLAG_AUTO_CANCEL) != 0)
-                .setGroup(null)
+                .setGroup("$sequential_id")
                 .setGroupSummary(false)
                 .build()
 
@@ -213,10 +214,9 @@ class NotificationListener : NotificationListenerService() {
                 getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
 
             // We can't use a list because notifications may be removed in an arbitrary order
-            val id = proxiedNotifications.size
-            notificationManager.notify(id, notification)
+            notificationManager.notify(sequential_id, notification)
 
-            proxiedNotifications[id] = ProxiedNotificationData(
+            proxiedNotifications[sequential_id] = ProxiedNotificationData(
                 group, sbn.key, sbn.notification.flags
             )
         } catch (e: IllegalArgumentException) {
