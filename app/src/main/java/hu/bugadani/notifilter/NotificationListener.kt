@@ -34,6 +34,7 @@ class NotificationListener : NotificationListenerService() {
     }
 
     private val receiver = UnlockReceiver(this)
+    private lateinit var collector: NotificationCollector
     private var proxied: HashMap<NotificationGroup, Long> = HashMap()
     private var proxiedNotifications: HashMap<Int, ProxiedNotificationData> = HashMap()
     private var perAppOptions = HashMap<String, AppOptions>()
@@ -55,6 +56,9 @@ class NotificationListener : NotificationListenerService() {
 
         Log.d(TAG, "onCreate")
 
+        // FIXME this crashes because it accesses database on the UI thread
+        collector = NotificationCollector(applicationContext)
+
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
 
@@ -66,6 +70,7 @@ class NotificationListener : NotificationListenerService() {
     private fun onScreenOn() {
         Log.d(TAG, "Screen on")
         enabled = false
+        collector.store()
         clearAllNotifications()
     }
 
@@ -116,6 +121,8 @@ class NotificationListener : NotificationListenerService() {
         Log.d(TAG, "Category: ${sbn.notification.category}")
         Log.d(TAG, "Ticker: ${sbn.notification.tickerText}")
         Log.d(TAG, "Content text: ${sbn.notification.extras[Notification.EXTRA_TEXT]}")
+
+        collector.record(sbn)
 
         if (!connected || !enabled) {
             Log.d(TAG, "Notification ignored: disabled")
