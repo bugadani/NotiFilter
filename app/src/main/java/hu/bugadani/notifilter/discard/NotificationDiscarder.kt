@@ -15,6 +15,9 @@ class NotificationDiscarder {
         filters["com.viber.voip"] = listOf(
             Category(Equals(null))
         )
+        filters["com.microsoft.office.outlook"] = listOf(
+            Not(TickerText(Equals(null))) // emails seem to have no ticker text
+        )
     }
 
     fun discard(sbn: StatusBarNotification): Boolean {
